@@ -1,0 +1,10 @@
+CREATE OR REPLACE FUNCTION eval_date(i_string IN VARCHAR2) RETURN DATE AS
+  ret DATE;
+BEGIN
+  EXECUTE IMMEDIATE 'BEGIN :ret := '||i_string||'; END;' USING OUT ret;
+  RETURN ret;
+END;
+/
+ 
+GRANT EXECUTE ON eval_date TO PUBLIC;
+CREATE OR REPLACE PUBLIC SYNONYM eval_date FOR eval_date;

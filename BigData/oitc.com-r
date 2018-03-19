@@ -1,0 +1,12 @@
+$TTL 86400 ;
+@ IN SOA PowerEdge.oitc.com. root.PowerEdge.oitc.com. (
+        0 ; serial
+        1D ; refresh
+        1H ; retry
+        1W ; expire
+        3H ) ; minimum
+        IN      NS      PowerEdge.oitc.com.
+
+100     IN      PTR     PowerEdge.oitc.com.
+101     IN      PTR     hadoop-1.oitc.com.
+102     IN      PTR     hadoop-2.oitc.com.

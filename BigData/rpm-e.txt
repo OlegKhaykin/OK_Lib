@@ -1,0 +1,13 @@
+service cloudera-scm-server stop
+service cloudera-scm-agent stop
+yum remove 'cloudera-manager-*'
+rm -Rf /etc/cloudera-scm-server
+rm -Rf /etc/cloudera-scm-agent
+rm -f /etc/default/cloudera*
+rm -Rf /var/log/cloudera*
+rm -Rf /opt/cloudera
+
+rpm -q -all | grep cloudera | cut -d / -f 4 | sort | uniq
+
+yum remove <package>
+yum remove hue-common
