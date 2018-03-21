@@ -19,7 +19,7 @@ begin
 
   etl.add_data
   (
-    p_operation => 'MERGE',
+    p_operation => 'REPLACE',
     p_tgt => 'tst_ok',
     p_src => 'all_objects',
     p_uk_col_list => 'OWNER,OBJECT_NAME',
