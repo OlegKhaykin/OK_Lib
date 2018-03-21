@@ -6,7 +6,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
   
   History of changes (newest to oldest):
   ------------------------------------------------------------------------------
-  21-Mar-2018, OK: added abibility to do incremental MERGE; 
+  21-Mar-2018, OK: added ability to do incremental MERGE; 
   14-Feb-2018, OK: simplified MERGE statement in ADD_DATA procedure;
   02-Feb-2018, OK: added parameter P_DELETE_CND to ADD_DATA procedure;
   01-Feb-2018, OK: added parameter P_CHANGES_ONLY to ADD_DATA procedure;
