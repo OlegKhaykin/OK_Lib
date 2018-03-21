@@ -38,26 +38,21 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     p_table := SUBSTR(l_name, n+1, CASE WHEN m>0 THEN m-n-1 ELSE l END);
     p_db_link := CASE WHEN m>0 THEN SUBSTR(l_name, m+1) END;
   END;
-      
-
-  -- Procedure RESOLVE_NAME resolves the given table/view/synonym name
-  -- into complete description of the underlying table/view: schema.name
-  PROCEDURE resolve_name
+  
+  
+  -- This version of FIND_TABLE finds the actual SCHEMA.NAME 
+  -- for the given SCHEMA.NAME, which can be a synonym
+  PROCEDURE find_table
   (
     p_schema  IN OUT VARCHAR2,
     p_table   IN OUT VARCHAR2
   ) IS
-    v_schema    VARCHAR2(30);
-    v_table     VARCHAR2(30);
     v_db_link   VARCHAR2(30);
     v_obj_type  VARCHAR2(30);
   BEGIN
-    v_schema := p_schema;
-    v_table := p_table;
-      
     LOOP
       SELECT object_type, table_owner, table_name, db_link
-      INTO v_obj_type, v_schema, v_table, v_db_link
+      INTO v_obj_type, p_schema, p_table, v_db_link
       FROM
       (
         SELECT
@@ -73,8 +68,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
             object_name AS table_name,
             NULL AS db_link
           FROM all_objects
-          WHERE object_type IN ('TABLE','VIEW') AND object_name = UPPER(v_table)
-          AND owner = NVL(v_schema, SYS_CONTEXT('USERENV','CURRENT_SCHEMA'))
+          WHERE object_type IN ('TABLE','VIEW') AND object_name = UPPER(p_table)
+          AND owner = NVL(p_schema, SYS_CONTEXT('USERENV','CURRENT_SCHEMA'))
          UNION ALL
           SELECT
             'SYNONYM' AS object_type,
@@ -84,48 +79,45 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
             table_name,
             db_link
           FROM all_synonyms
-          WHERE synonym_name = UPPER(v_table)
-          AND owner IN (NVL(v_schema, SYS_CONTEXT('USERENV','CURRENT_SCHEMA')), 'PUBLIC')
+          WHERE synonym_name = UPPER(p_table)
+          AND owner IN (NVL(p_schema, SYS_CONTEXT('USERENV','CURRENT_SCHEMA')), 'PUBLIC')
         )
       )
       WHERE rnum = 1;
       
       IF v_db_link IS NOT NULL THEN
-        Raise_Application_Error(-20001, 'Remote object: '||v_schema||'.'||v_table||'@'||v_db_link||'!');
+        Raise_Application_Error(-20001, 'Remote object: '||p_schema||'.'||p_table||'@'||v_db_link||'!');
       END IF;
       
       EXIT WHEN v_obj_type <> 'SYNONYM';
     END LOOP;
     
-    p_schema := v_schema;
-    p_table := v_table;
   EXCEPTION
    WHEN NO_DATA_FOUND THEN
     Raise_Application_Error(-20000, 'Unknown table/view: '||p_table);
   END;
   
   
-  -- This version of procedure RESOLVE_NAME resolves the given table/view/synonym name
-  -- into complete description of the underlying table/view:
-  -- schema, table/view name, DB link
-  PROCEDURE resolve_name
+  -- Procedure FIND_TABLE resolves the given table/view/synonym name
+  -- into a complete SCHEMA.NAME description of the underlying table/view
+  PROCEDURE find_table
   (
     p_name    IN  VARCHAR2,
     p_schema  OUT VARCHAR2,
     p_table   OUT VARCHAR2
   ) IS
-    l_db_link VARCHAR2(30);
+    v_db_link VARCHAR2(30);
   BEGIN
-    xl.begin_action('Trying to resolve name', p_name);
-    parse_name(p_name, p_schema, p_table, l_db_link);
+    xl.begin_action('Looking for table/view "'||p_name||'"');
+    parse_name(p_name, p_schema, p_table, v_db_link);
     
-    IF l_db_link IS NOT NULL THEN
-      Raise_Application_Error(-20001, 'Remote object: '||p_name||'!');
+    IF v_db_link IS NOT NULL THEN
+      Raise_Application_Error(-20001, 'Remote object: '||p_schema||'.'||p_table||'@'||v_db_link||'!');
     END IF;
     
-    resolve_name(p_schema, p_table);
+    find_table(p_schema, p_table);
     
-    xl.end_action('Resolved: '||p_schema||'.'||p_table);
+    xl.end_action('Found: '||p_schema||'.'||p_table);
   END;
   
   
@@ -137,8 +129,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     l_tname   VARCHAR2(30);
     ret       VARCHAR2(1000);
   BEGIN
-    resolve_name(p_table, l_schema, l_tname);
-   
+    find_table(p_table, l_schema, l_tname);
+    
     SELECT concat_v2_set
     (
       CURSOR
@@ -341,34 +333,34 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     
     IF UPPER(p_src) LIKE '%SELECT%' THEN
       l_view_name := 'V_ETL_'||l_sess_id;
-      l_src_tname := l_view_name;
       l_cmd := 'CREATE VIEW '||l_view_name||' AS '||p_src;
       xl.begin_action('Creating view '||l_view_name, l_cmd);
-      EXECUTE IMMEDIATE l_cmd;
-      xl.end_action;
-    ELSE
-      l_src_tname := p_src;
-    END IF;
-    
-    BEGIN
-      resolve_name(l_src_tname, l_src_schema, l_src_tname);
-    EXCEPTION
-     WHEN remote_object THEN
-      l_view_name := 'V_ETL_'||l_sess_id;
-      l_cmd := 'CREATE VIEW '||l_view_name||' AS SELECT * FROM '||p_src;
-      
-      xl.begin_action('Creating a local view '||l_view_name||' for the remote source '||p_src, l_cmd);
       EXECUTE IMMEDIATE l_cmd;
       xl.end_action;
       
       l_src_schema := SYS_CONTEXT('USERENV','CURRENT_SCHEMA');
       l_src_tname := l_view_name;
-    END;
-
-    resolve_name(p_tgt, l_tgt_schema, l_tgt_tname);
+    ELSE
+      BEGIN
+        find_table(p_src, l_src_schema, l_src_tname);
+      EXCEPTION
+       WHEN remote_object THEN
+        l_view_name := 'V_ETL_'||l_sess_id;
+        l_cmd := 'CREATE VIEW '||l_view_name||' AS SELECT * FROM '||p_src;
+        
+        xl.begin_action('Creating a local view '||l_view_name||' for the remote source '||p_src, l_cmd);
+        EXECUTE IMMEDIATE l_cmd;
+        xl.end_action;
+        
+        l_src_schema := SYS_CONTEXT('USERENV','CURRENT_SCHEMA');
+        l_src_tname := l_view_name;
+      END;
+    END IF;
+    
+    find_table(p_tgt, l_tgt_schema, l_tgt_tname);
     
     IF p_errtab IS NOT NULL THEN
-      resolve_name(p_errtab, l_err_schema, l_err_tname);
+      find_table(p_errtab, l_err_schema, l_err_tname);
     END IF;
     
     collect_metadata;
@@ -435,9 +427,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       CASE WHEN l_operation = 'MERGE' THEN '
     WHEN NOT MATCHED THEN INSERT ('||REPLACE(l_ins_cols, 'q.')||') VALUES ('||l_ins_cols||')'
       END
-    ELSE '
-    INSERT '||l_hint1||'
-    INTO '||p_tgt||'('||REPLACE(LOWER(l_ins_cols), 'q.')||')' ||
+    ELSE 'INSERT '||l_hint1||' INTO '||p_tgt||'('||REPLACE(LOWER(l_ins_cols), 'q.')||')' ||
       CASE WHEN p_commit_at <= 0 THEN '
     SELECT '||l_hint2||' '||l_ins_cols||' FROM '||l_src_tname||' q '||p_whr
       ELSE '
@@ -479,7 +469,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       l_cmd := '
       DECLARE
         CURSOR cur IS
-        SELECT '||l_hint2||' '||l_obj_type_name||'('||LOWER(l_sel_cols)||') FROM '||l_src_tname||' '||p_whr||';
+        SELECT '||l_hint2||' '||l_obj_type_name||'('||LOWER(l_sel_cols)||') FROM '||l_src_schema||'.'||l_src_tname||' '||p_whr||';
         
         bfr  '||l_tab_type_name||';
         cnt  PLS_INTEGER;
@@ -492,6 +482,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           FETCH cur BULK COLLECT INTO bfr LIMIT :commit_at;
           cnt := bfr.COUNT;
           :sel_cnt := :sel_cnt + cnt;
+          
           ' || 
       CASE WHEN l_operation = 'INSERT' THEN 'FORALL i IN 1..cnt
           '

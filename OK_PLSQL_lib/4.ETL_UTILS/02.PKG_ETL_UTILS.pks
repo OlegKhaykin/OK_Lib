@@ -23,17 +23,18 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
     p_db_link OUT VARCHAR2
   );
   
-  -- Procedure RESOLVE_NAME resolves the given table/view/synonym name
-  -- into complete description of the underlying table/view: schema, table/view name, DB link
-  PROCEDURE resolve_name
+  -- Procedure FIND_TABLE resolves the given table/view/synonym name
+  -- into a complete SCHEMA.NAME description of the underlying table/view
+  PROCEDURE find_table
   (
     p_name    IN  VARCHAR2,
     p_schema  OUT VARCHAR2,
     p_table   OUT VARCHAR2
   );
   
-  -- This version of the procedure RESOLVE_NAME resolve the local schema.object name 
-  PROCEDURE resolve_name
+  -- This version of FIND_TABLE finds the actual SCHEMA.NAME 
+  -- for the given SCHEMA.NAME, which can be a synonym
+  PROCEDURE find_table
   (
     p_schema  IN OUT VARCHAR2,
     p_table   IN OUT VARCHAR2

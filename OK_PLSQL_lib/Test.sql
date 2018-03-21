@@ -24,7 +24,7 @@ begin
     p_src => 'all_objects',
     p_uk_col_list => 'OWNER,OBJECT_NAME',
     p_whr => 'WHERE object_type in (''TABLE'',''VIEW'')',
-    p_commit_at => 500
+    p_commit_at => -1
   );
     
   xl.close_log('Successfully completed');
