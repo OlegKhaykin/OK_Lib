@@ -1,19 +1,4 @@
-prompt Creating table TMP_ALL_COLUMNS
-
-begin
-  for r in
-  (
-    select object_name
-    from all_objects
-    where owner = sys_context('userenv', 'current_schema')
-    and object_type = 'TABLE'
-    and object_name = 'TMP_ALL_COLUMNS'
-  )
-  loop
-    execute immediate 'drop table '||r.object_name;
-  end loop;
-end;
-/
+exec dbm.drop_tables('TMP_ALL_COLUMNS');
   
 CREATE GLOBAL TEMPORARY TABLE tmp_all_columns
 (

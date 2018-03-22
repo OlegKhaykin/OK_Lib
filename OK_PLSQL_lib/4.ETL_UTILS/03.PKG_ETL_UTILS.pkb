@@ -108,7 +108,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
   ) IS
     v_db_link VARCHAR2(30);
   BEGIN
-    xl.begin_action('Looking for table/view "'||p_name||'"');
+    xl.begin_action('Looking for table/view "'||p_name||'"', 'Started', FALSE);
     parse_name(p_name, p_schema, p_table, v_db_link);
     
     IF v_db_link IS NOT NULL THEN
@@ -204,13 +204,15 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     PROCEDURE collect_metadata IS
       PRAGMA AUTONOMOUS_TRANSACTION;
     BEGIN
+      EXECUTE IMMEDIATE 'TRUNCATE TABLE tmp_all_columns'; 
+    
       l_cmd := 'INSERT INTO tmp_all_columns(side, owner, table_name, column_id, column_name, data_type, uk, nullable)
       SELECT ''SRC'', cl.owner, cl.table_name, cl.column_id, cl.column_name, cl.data_type, ''N'', ''Y''
-      FROM all_tab_columns cl
+      FROM v_all_columns cl
       WHERE cl.owner = '''||l_src_schema||''' AND cl.table_name = '''||l_src_tname||'''
       UNION
       SELECT ''TGT'', cl.owner, cl.table_name, cl.column_id, cl.column_name, cl.data_type, NVL2(cc.column_name, ''Y'', ''N'') uk, cl.nullable
-      FROM all_tab_columns cl' ||
+      FROM v_all_columns cl' ||
       CASE WHEN p_uk_col_list IS NOT NULL THEN '
       LEFT JOIN
       (
@@ -269,20 +271,21 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         concat_v2_set(CURSOR(
           SELECT 'q.'||tc.column_name
           FROM tmp_all_columns tc
-          JOIN tmp_all_columns sc ON sc.column_name = tc.column_name
-          WHERE tc.side = 'TGT' AND sc.side = 'SRC'
+          JOIN tmp_all_columns sc ON sc.column_name = tc.column_name AND sc.side = 'SRC'
+          WHERE tc.side = 'TGT'
           ORDER BY tc.column_id)
         ),
         concat_v2_set(CURSOR(
-          SELECT column_name
-          FROM tmp_all_columns
-          WHERE side = 'SRC'
-          ORDER BY column_id)
+          SELECT sc.column_name||' '||sc.data_type
+          FROM tmp_all_columns sc
+          JOIN tmp_all_columns tc ON tc.column_name = sc.column_name AND tc.side = 'TGT'
+          WHERE sc.side = 'SRC'
+          ORDER BY sc.column_id)
         )
       INTO l_pk_cols, l_on_list, l_upd_cols, l_ins_cols, l_sel_cols
       FROM dual;
- 
-      COMMIT; -- to delete rows from TMP_ALL_COLUMNS
+      
+      COMMIT; -- to purge TMP_ALL_COLUMNS;
     END;
     
     
@@ -297,14 +300,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       
       IF l_tab_type_name IS NOT NULL THEN
         l_cmd := 'DROP TYPE '||l_tab_type_name;
-        xl.begin_action('Dropping type '||l_tab_type_name, l_cmd);
+        xl.begin_action('Dropping type '||l_tab_type_name, l_cmd, FALSE);
         EXECUTE IMMEDIATE l_cmd;
         xl.end_action;
       END IF;
        
       IF l_obj_type_name IS NOT NULL THEN
         l_cmd := 'DROP TYPE '||l_obj_type_name;
-        xl.begin_action('Dropping type '||l_obj_type_name, l_cmd);
+        xl.begin_action('Dropping type '||l_obj_type_name, l_cmd, FALSE);
         EXECUTE IMMEDIATE l_cmd;
         xl.end_action;
       END IF;
@@ -404,15 +407,15 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     
     l_cmd :=
     CASE WHEN l_operation IN ('UPDATE', 'MERGE') THEN '
-    MERGE '||l_hint1||' INTO '||p_tgt||' t USING ' || 
+    MERGE '||l_hint1||' INTO '||l_tgt_schema||'.'||l_tgt_tname||' t USING ' || 
       CASE
         WHEN p_commit_at > 0 THEN 'TABLE(bfr)'
         WHEN p_whr IS NOT NULL OR l_hint2 IS NOT NULL THEN '
       (
         SELECT '||l_hint2||' *
-        FROM '||NVL(l_view_name, p_src)||' '||p_whr||'
+        FROM '||l_src_schema||'.'||l_src_tname||' '||p_whr||'
       )'
-        ELSE NVL(l_view_name, p_src)
+        ELSE l_src_schema||'.'||l_src_tname
       END || ' q
     ON ('||l_on_list||')'||
       CASE WHEN l_upd_cols IS NOT NULL THEN '
@@ -427,9 +430,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       CASE WHEN l_operation = 'MERGE' THEN '
     WHEN NOT MATCHED THEN INSERT ('||REPLACE(l_ins_cols, 'q.')||') VALUES ('||l_ins_cols||')'
       END
-    ELSE 'INSERT '||l_hint1||' INTO '||p_tgt||'('||REPLACE(LOWER(l_ins_cols), 'q.')||')' ||
+    ELSE 'INSERT '||l_hint1||' INTO '||l_tgt_schema||'.'||l_tgt_tname||'('||REPLACE(LOWER(l_ins_cols), 'q.')||')' ||
       CASE WHEN p_commit_at <= 0 THEN '
-    SELECT '||l_hint2||' '||l_ins_cols||' FROM '||l_src_tname||' q '||p_whr
+    SELECT '||l_hint2||' '||l_ins_cols||' FROM '||l_src_schema||'.'||l_src_tname||' q '||p_whr
       ELSE '
     VALUES('||REPLACE(LOWER(l_ins_cols), 'q.', 'bfr(i).')||')'
       END
@@ -441,19 +444,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     IF p_commit_at > 0 THEN -- incremental load with commit afrer each portion
       l_obj_type_name := 'OBJ_ETL_'||l_sess_id;
       
-      SELECT 'CREATE TYPE '||l_obj_type_name||' AS OBJECT (' ||
-      concat_v2_set
-      (
-        CURSOR
-        (
-          SELECT LOWER(column_name)||' '||data_type 
-          FROM v_all_columns
-          WHERE owner = l_src_schema AND table_name = l_src_tname
-          ORDER BY column_id
-        ),
-        ','
-      ) || ');'
-      INTO l_act FROM dual;
+      l_act := 'CREATE TYPE '||l_obj_type_name||' AS OBJECT ('||l_sel_cols||');';
       
       xl.begin_action('Creating object type '||l_obj_type_name, l_act, FALSE);
       EXECUTE IMMEDIATE l_act;
@@ -469,7 +460,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       l_cmd := '
       DECLARE
         CURSOR cur IS
-        SELECT '||l_hint2||' '||l_obj_type_name||'('||LOWER(l_sel_cols)||') FROM '||l_src_schema||'.'||l_src_tname||' '||p_whr||';
+        SELECT '||l_hint2||' '||l_obj_type_name||'('||REPLACE(LOWER(l_ins_cols), 'q.')||') FROM '||l_src_schema||'.'||l_src_tname||' '||p_whr||';
         
         bfr  '||l_tab_type_name||';
         cnt  PLS_INTEGER;
@@ -482,26 +473,25 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           FETCH cur BULK COLLECT INTO bfr LIMIT :commit_at;
           cnt := bfr.COUNT;
           :sel_cnt := :sel_cnt + cnt;
-          
           ' || 
-      CASE WHEN l_operation = 'INSERT' THEN 'FORALL i IN 1..cnt
+      CASE WHEN l_operation = 'INSERT' THEN '
+          FORALL i IN 1..cnt
           '
       END || l_cmd || ';
           
           :add_cnt := :add_cnt + SQL%ROWCOUNT;
           COMMIT;
           
-          IF cnt < :commit_at THEN
-            EXIT;
-          END IF;
+          EXIT WHEN cnt < :commit_at;
           
           xl.end_action(:sel_cnt||'' rows selected from source, ''||:add_cnt||'' rows inserted/updated so far'');
           xl.begin_action(:act, ''Continue ...'');
         END LOOP;
+        
         CLOSE cur;
       END;';
      
-      l_act := 'Inserting rows by portions';
+      l_act := 'Processing source data by portions';
       xl.begin_action(l_act, l_cmd);
         IF l_err_tname IS NOT NULL THEN
           EXECUTE IMMEDIATE l_cmd USING IN OUT l_cnt, IN OUT p_add_cnt, p_commit_at, l_sess_id, l_act;
@@ -509,7 +499,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           EXECUTE IMMEDIATE l_cmd USING IN OUT l_cnt, IN OUT p_add_cnt, p_commit_at, l_act;
         END IF;
         l_cmd := NULL;
-      xl.end_action('Totally inserted/updated: '||p_add_cnt||' rows');
+      xl.end_action('Totally selected from source: '||l_cnt||' rows; inserted/updated: '||p_add_cnt||' rows');
  
     ELSE -- "one-shot" load with or without commit
       
