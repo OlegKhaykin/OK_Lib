@@ -86,7 +86,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       WHERE rnum = 1;
       
       IF v_db_link IS NOT NULL THEN
-        Raise_Application_Error(-20001, 'Remote object: '||p_schema||'.'||p_table||'@'||v_db_link||'!');
+        Raise_Application_Error(-20001, 'Remote object: '||CASE WHEN p_schema IS NOT NULL THEN p_schema||'.' END || p_table||'@'||v_db_link);
       END IF;
       
       EXIT WHEN v_obj_type <> 'SYNONYM';
@@ -106,18 +106,22 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     p_schema  OUT VARCHAR2,
     p_table   OUT VARCHAR2
   ) IS
-    v_db_link VARCHAR2(30);
+    v_db_link VARCHAR2(100);
   BEGIN
     xl.begin_action('Looking for table/view "'||p_name||'"', 'Started', FALSE);
     parse_name(p_name, p_schema, p_table, v_db_link);
     
     IF v_db_link IS NOT NULL THEN
-      Raise_Application_Error(-20001, 'Remote object: '||p_schema||'.'||p_table||'@'||v_db_link||'!');
+      Raise_Application_Error(-20001, 'Remote object: '||CASE WHEN p_schema IS NOT NULL THEN p_schema||'.' END || p_table||'@'||v_db_link);
     END IF;
     
     find_table(p_schema, p_table);
     
     xl.end_action('Found: '||p_schema||'.'||p_table);
+  EXCEPTION
+   WHEN remote_object THEN
+    xl.end_action(SQLERRM);
+    RAISE;
   END;
   
   
@@ -152,13 +156,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     RETURN ret;
   END;
  
-  -- Procedure ADD_DATA selects data from the specified source table or view (P_SRC)
-  -- using optional WHERE condition (P_WHR).
-  -- Depending on P_OPERATION, it either merges or inserts the source data into the Target table (P_TGT).
+  -- Procedure ADD_DATA selects data from the specified source table or view (P_SRC) using optional WHERE condition (P_WHR).
+  -- Depending on P_OPERATION, it either merges or inserts the source data into the target table (P_TGT).
   -- The output parameter P_ADD_CNT gets the number of rows added to the target table.
   -- P_ERR_CNT gets the number of source rows that were rejected and placed in the error table (P_ERRTAB).
-  -- Note: if P_ERRTAB is not specified, then this procedure errors-out
-  -- if at least one source row cannot be placed into the target table.
+  -- Note: if P_ERRTAB is not specified, then this procedure errors-out if at least one source row cannot be placed into the target table.
   PROCEDURE add_data
   (
     p_operation     IN VARCHAR2, -- 'INSERT', 'UPDATE', 'MERGE', 'REPLACE' or 'EQUALIZE'
@@ -197,10 +199,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     l_act           VARCHAR2(5000);
     l_cnt           PLS_INTEGER;
     
-    -- Procedure COLLECT_METADATA gathers information about the columns
-    -- of the target table and the source table/view.
-    -- Gatherd information is stored in TMP_COLUMN_INFO and
-    -- then used in dynamic DML statement generation.
+    -- Procedure COLLECT_METADATA gathers information about the columns of the target table and the source table/view.
+    -- Gathered information is stored in TMP_COLUMN_INFO and then used in dynamic DML statement generation.
     PROCEDURE collect_metadata IS
       PRAGMA AUTONOMOUS_TRANSACTION;
     BEGIN
@@ -231,7 +231,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       WHERE cl.owner = '''||l_tgt_schema||''' AND cl.table_name = '''||l_tgt_tname||'''';
      
       EXECUTE IMMEDIATE l_cmd;
-      l_cmd := NULL;
       
       SELECT
         concat_v2_set(CURSOR(
@@ -314,7 +313,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     END;
     
   BEGIN
-    xl.begin_action('Adding data to '||p_tgt, 'Operation: '||p_operation);
+    xl.begin_action('Adding data to "'||p_tgt||'"', 'Operation: '||p_operation);
     
     l_sess_id := NVL(TO_CHAR(xl.get_current_proc_id), SYS_CONTEXT('USERENV','SESSIONID'));
     l_ts := SYSTIMESTAMP;
@@ -351,7 +350,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         l_view_name := 'V_ETL_'||l_sess_id;
         l_cmd := 'CREATE VIEW '||l_view_name||' AS SELECT * FROM '||p_src;
         
-        xl.begin_action('Creating a local view '||l_view_name||' for the remote source '||p_src, l_cmd);
+        xl.begin_action('Creating a local view '||l_view_name||' for the remote source "'||p_src||'"', l_cmd);
         EXECUTE IMMEDIATE l_cmd;
         xl.end_action;
         
@@ -504,14 +503,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     ELSE -- "one-shot" load with or without commit
       
       xl.begin_action('Executing command', l_cmd);
-        IF l_err_tname IS NOT NULL THEN
-          EXECUTE IMMEDIATE l_cmd USING l_sess_id;
-          p_add_cnt := SQL%ROWCOUNT;
-        ELSE
-          EXECUTE IMMEDIATE l_cmd;
-          p_add_cnt := SQL%ROWCOUNT;
-        END IF;
-        l_cmd := NULL;
+      IF l_err_tname IS NOT NULL THEN
+        EXECUTE IMMEDIATE l_cmd USING l_sess_id;
+        p_add_cnt := SQL%ROWCOUNT;
+      ELSE
+        EXECUTE IMMEDIATE l_cmd;
+        p_add_cnt := SQL%ROWCOUNT;
+      END IF;
+      l_cmd := NULL;
       xl.end_action;
       
       IF p_commit_at <> 0 THEN
@@ -525,12 +524,13 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     ELSE
       p_err_cnt := 0;
     END IF;
-
-    clean_up;    
+    
+    clean_up;
     
     xl.end_action(p_add_cnt||' rows added; '||p_err_cnt||' errors found');
   EXCEPTION
    WHEN OTHERS THEN
+    xl.end_action(SQLERRM);
     clean_up;
     RAISE;
   END;
