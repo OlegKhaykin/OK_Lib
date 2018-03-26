@@ -19,13 +19,13 @@ begin
   (
     p_operation => 'MERGE',
     p_tgt => 'tst_ok',
-    p_src => 'system_objects',
+    p_src => 'all_objects',
     p_uk_col_list => 'OWNER,OBJECT_NAME',
     p_whr => 'WHERE object_type in (''TABLE'',''VIEW'')',
-    p_commit_at => -1
+    p_commit_at => 500
   );
   
-  xl.close_log('Successfully completed');
+  xl.close_log('Successfully completed', TRUE);
 exception
  when others then
   xl.close_log(sqlerrm, TRUE);
