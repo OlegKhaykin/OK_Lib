@@ -6,6 +6,8 @@ and proc_id < 82
 ;
 commit;
 
+truncate table tst_ok;
+
 select
   proc_id, name,
   comment_txt, 
@@ -31,7 +33,7 @@ from
 order by proc_id desc;
 
 select * from dbg_log_data
-where proc_id IN (83)
+where proc_id IN (86)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
 order by tstamp desc;
