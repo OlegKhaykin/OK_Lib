@@ -37,7 +37,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   dump_array    dump_collection;
  
   v_main_module VARCHAR2(256);
-  n_proc_id     dbg_process_logs.proc_id%TYPE;
   n_log_level   dbg_log_data.log_level%TYPE;
   n_call_level  PLS_INTEGER;
   n_dump_idx    PLS_INTEGER;
@@ -52,7 +51,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   ) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
   BEGIN
-    IF n_proc_id IS NULL THEN
+    IF g_proc_id IS NULL THEN
       v_main_module := SYS_CONTEXT('USERENV','MODULE');
       
       call_stack.DELETE;
@@ -66,10 +65,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
      
       b_debug := p_debug;
      
-      SELECT seq_dbg_xlogger.NEXTVAL INTO n_proc_id FROM dual;
+      SELECT seq_dbg_xlogger.NEXTVAL INTO g_proc_id FROM dual;
      
       INSERT INTO dbg_process_logs(proc_id, name, comment_txt)
-      VALUES(n_proc_id, p_name, p_comment);
+      VALUES(g_proc_id, p_name, p_comment);
      
       COMMIT;
     END IF;
@@ -86,7 +85,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
  
   FUNCTION get_current_proc_id RETURN PLS_INTEGER IS
   BEGIN
-    RETURN n_proc_id;
+    RETURN g_proc_id;
   END;
   
   
@@ -102,11 +101,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   BEGIN
     IF p_persist THEN
       INSERT INTO dbg_log_data(proc_id, tstamp, log_level, action, comment_txt)
-      VALUES(n_proc_id, SYSTIMESTAMP, n_log_level, p_action, p_comment);
+      VALUES(g_proc_id, SYSTIMESTAMP, n_log_level, p_action, p_comment);
       
       COMMIT;
     ELSE
-      dmp.proc_id := n_proc_id;
+      dmp.proc_id := g_proc_id;
       dmp.tstamp := SYSTIMESTAMP;
       dmp.log_level := n_log_level;
       dmp.action := p_action;
@@ -128,7 +127,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   BEGIN
     DBMS_APPLICATION_INFO.SET_ACTION(p_action);
     
-    IF n_proc_id IS NOT NULL THEN
+    IF g_proc_id IS NOT NULL THEN
       stk.action := p_action;
      
       IF p_debug OR p_debug IS NULL AND b_debug THEN
@@ -156,7 +155,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   PROCEDURE end_action(p_comment IN VARCHAR2 DEFAULT 'Completed') IS
     stk   action_stack_record;
   BEGIN
-    IF n_proc_id IS NOT NULL THEN
+    IF g_proc_id IS NOT NULL THEN
       stk := action_stack(n_log_level); -- get current action from the stack
     
       IF NOT stats_array.EXISTS(stk.action) OR stats_array(stk.action).tstamp IS NULL THEN
@@ -185,7 +184,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   
     act    dbg_log_data.action%TYPE;
   BEGIN
-    IF n_proc_id IS NOT NULL THEN -- if logging has been started in this session:
+    IF g_proc_id IS NOT NULL THEN -- if logging has been started in this session:
       WHILE n_log_level > call_stack(n_call_level).log_level LOOP
         end_action(p_result);
       END LOOP;
@@ -210,7 +209,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
           INSERT INTO dbg_performance_data(proc_id, action, cnt, seconds)
           VALUES
           (
-            n_proc_id, act, stats_array(act).cnt,
+            g_proc_id, act, stats_array(act).cnt,
             EXTRACT(DAY FROM stats_array(act).dur)*86400 +
             EXTRACT(HOUR FROM stats_array(act).dur)*3600 +
             EXTRACT(MINUTE FROM stats_array(act).dur)*60 +
@@ -221,11 +220,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
         END LOOP;
        
         UPDATE dbg_process_logs SET end_time = SYSTIMESTAMP, result = p_result
-        WHERE proc_id = n_proc_id;
+        WHERE proc_id = g_proc_id;
        
         COMMIT;
        
-        n_proc_id := NULL;
+        g_proc_id := NULL;
       END IF;
     END IF;
   END;
@@ -257,7 +256,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   
   PROCEDURE cancel_log IS
   BEGIN
-   IF n_proc_id IS NOT NULL THEN
+   IF g_proc_id IS NOT NULL THEN
       n_call_level := 1;
       close_log('Cancelled');
     END IF;

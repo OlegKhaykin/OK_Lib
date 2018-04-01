@@ -1010,7 +1010,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_db_maintenance AS
       JOIN all_tables t ON t.table_name = tl.COLUMN_VALUE AND t.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
     )
     LOOP
-      exec_sql('DROP TABLE '||r.table_name||' PURGE');
+      exec_sql('DROP TABLE '||r.table_name||' CASCADE CONSTRAINTS PURGE');
     END LOOP;
   END;
  END pkg_db_maintenance;

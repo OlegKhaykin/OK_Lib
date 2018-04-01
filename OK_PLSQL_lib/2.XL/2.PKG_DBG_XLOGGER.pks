@@ -8,6 +8,8 @@ CREATE OR REPLACE PACKAGE pkg_dbg_xlogger AS
   --------------------------------------------------------------------------------
   10-Nov-2015, OK: new version
 */
+  g_proc_id     dbg_process_logs.proc_id%TYPE;
+
   PROCEDURE open_log(p_name IN VARCHAR2, p_comment IN VARCHAR2 DEFAULT NULL, p_debug IN BOOLEAN DEFAULT FALSE);
  
   FUNCTION get_current_proc_id RETURN PLS_INTEGER;
