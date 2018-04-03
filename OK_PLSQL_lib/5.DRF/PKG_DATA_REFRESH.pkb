@@ -14,6 +14,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
 */
   MAX_SLEEP_SECONDS CONSTANT PLS_INTEGER := 5;
   
+  
   -- Procedure HEARTBEAT updates HEARTBEAT_DT in CNF_DATA_FLOWS
   PROCEDURE heartbeat(p_data_flow_cd IN VARCHAR2) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
@@ -22,6 +23,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     COMMIT;
   END;
   
+  
   -- Procedure START_JOB starts a Scheduler Job executing the given Task
   PROCEDURE start_job(p_job_name IN VARCHAR2, p_task IN VARCHAR2) IS
   BEGIN
@@ -29,19 +31,27 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     (
       job_name => p_job_name,
       job_style => 'LIGHTWEIGHT',
-      program_name => 'EXEC_CMD',
+      program_name => 'EXEC_TASK',
       enabled => FALSE
     );
 
     DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE
     (
       job_name => p_job_name,
-      argument_name => 'P_CMD',
-      argument_value => 'BEGIN '||p_task||' END;'
+      argument_name => 'P_JOB_NAME',
+      argument_value => p_job_name
+    );
+
+    DBMS_SCHEDULER.SET_JOB_ARGUMENT_VALUE
+    (
+      job_name => p_job_name,
+      argument_name => 'P_TASK',
+      argument_value => p_task
     );
 
     DBMS_SCHEDULER.ENABLE(p_job_name);
   END;
+  
   
   -- This procedure is started by DBMS_SCHEDULER to execute the task  
   PROCEDURE exec_task
@@ -51,7 +61,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
   ) IS
   BEGIN
     xl.open_log(p_job_name, 'Executing the Data Flow Task', TRUE);
-    EXECUTE IMMEDIATE 'BEGIN '||p_task||' END;';
+    
+    xl.begin_action('Executing task', p_task, FALSE);
+    EXECUTE IMMEDIATE p_task;
+    xl.end_action;
+    
     xl.close_log('Successfully completed');
   EXCEPTION
    WHEN OTHERS THEN
@@ -77,7 +91,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     END LOOP;
     xl.end_action;
     
-    xl.begin_action('Checking JOB completion status');
+    xl.begin_action('Checking JOB completion status', 'Started', FALSE);
     SELECT COUNT(1) INTO n_cnt
     FROM dbg_process_logs
     WHERE proc_id > xl.get_current_proc_id
@@ -96,13 +110,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     n_max_jobs  PLS_INTEGER;
     v_cmd       VARCHAR2(1000 BYTE);
     v_job_name  VARCHAR2(30);
+    v_signal    cnf_data_flows.signal%TYPE;
     
   BEGIN
     xl.open_log(p_data_flow_cd, 'Main process of the "'||p_data_flow_cd||'" Data Flow', TRUE);
     
     -- Marking the start of the Data Flow:
     UPDATE cnf_data_flows
-    SET last_proc_id = xl.get_current_proc_id, heartbeat_dt = SYSDATE
+    SET last_proc_id = xl.get_current_proc_id, heartbeat_dt = SYSDATE, signal = 'START'
     WHERE data_flow_cd = p_data_flow_cd
     RETURNING max_num_of_jobs INTO n_max_jobs;
     
@@ -123,6 +138,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     LOOP
       xl.begin_action('STEP #'||r.set_num||'.'||r.num||'; OPERATION: '||r.operation||', TGT: '||r.tgt||', AS_JOB='||r.as_job);
       
+      SELECT signal INTO v_signal
+      FROM cnf_data_flows
+      WHERE data_flow_cd = p_data_flow_cd;
+      
+      IF v_signal = 'STOP' THEN
+        Raise_Application_Error(-20000, '"STOP" signal received');
+      END IF;
+      
       IF r.operation = 'WAIT' THEN
         FOR w IN
         (
@@ -134,27 +157,26 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
         END LOOP;
         
       ELSE
-        v_cmd := 
+        v_cmd := 'BEGIN '|| 
         CASE r.operation
          WHEN 'PROCEDURE' THEN 
           r.tgt||'('''||p_data_flow_cd||''');'
          WHEN 'DELETE' THEN
-         'etl.delete_data(p_tgt=>'''||r.tgt||''', p_src=>'''||r.src||
-         ''', p_whr=>'''||r.whr||''', p_hint=>'''||r.hint||''', p_commit_at=>'||r.commit_at||');'
+         'etl.delete_data(p_tgt=>'''||r.tgt||''', p_src=>q''['||r.src||
+         ']'', p_whr=>q''['||r.whr||']'', p_hint=>'''||r.hint||''', p_commit_at=>'||r.commit_at||');'
          ELSE -- r.operation IN ('INSERT','APPEND','MERGE' 'REPLACE','EQUALIZE'):
          'etl.add_data(p_operation=>'''||r.operation||''', p_tgt=>'''||r.tgt||
-         ''', p_src=>'''||r.src||''', p_uk_col_list=>'''||r.uk_col_list||
-         ''',p_whr=>'''||r.whr||''', p_hint=>'''||r.hint||
+         ''', p_src=>q''['||r.src||']'', p_uk_col_list=>'''||r.uk_col_list||
+         ''',p_whr=>q''['||r.whr||']'', p_hint=>'''||r.hint||
          ''', p_errtab=>'''||r.err||''', p_commit_at=>'||r.commit_at||');'
-        END;
+        END || ' END;';
         
         IF r.as_job = 'N' THEN
-          v_cmd := 'BEGIN '||v_cmd||' END;';
           xl.begin_action('Executing command', v_cmd, FALSE);
           EXECUTE IMMEDIATE v_cmd;
           xl.end_action;
         ELSE
-          v_job_name := p_data_flow_cd||'_'||r.set_num||'.'||r.num;
+          v_job_name := p_data_flow_cd||'_'||r.set_num||'_'||r.num;
           
           IF n_max_jobs > 0 THEN
             wait_for_jobs(p_data_flow_cd||'%', n_max_jobs);
@@ -176,6 +198,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
    WHEN OTHERS THEN
     ROLLBACK;
     xl.close_log(SQLERRM, TRUE);
+    RAISE;
   END;
   
   
@@ -219,7 +242,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     xl.close_log('Successfylly completed');
   EXCEPTION
    WHEN OTHERS THEN
-    xl.close_log(SQLERRM);
+    xl.close_log(SQLERRM, TRUE);
     RAISE;
   END;
   
@@ -272,7 +295,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     xl.close_log('Successfully completed');
   EXCEPTION
    WHEN OTHERS THEN
-    xl.close_log(SQLERRM);
+    xl.close_log(SQLERRM, TRUE);
     RAISE;
   END gather_error_stats;
 END;

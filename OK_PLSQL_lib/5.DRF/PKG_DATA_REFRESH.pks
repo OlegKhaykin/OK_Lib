@@ -45,8 +45,8 @@ CREATE OR REPLACE PACKAGE pkg_data_refresh AS
 END;
 /
 
-CREATE OR REPLACE SYNONYM drf FOR pkg_pme_data_refresh
+CREATE OR REPLACE SYNONYM drf FOR pkg_data_refresh
 /
 
-CREATE OR REPLACE PUBLIC SYNONYM drf FOR pkg_pme_data_refresh
+CREATE OR REPLACE PUBLIC SYNONYM drf FOR pkg_data_refresh
 /
