@@ -1,8 +1,6 @@
 CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
 /*
- This package provides a metadata-driven ETL framework
- for data refresh in various local DB tables
- based on the data coming from source tables that may be either local or remote.
+ This package provides a metadata-driven ETL framework.
  
  Controlling metadata is stored in 2 tables:
  - CNF_DATA_FLOWS;
@@ -24,7 +22,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
   END;
   
   
-  -- Procedure START_JOB starts a Scheduler Job executing the given Task
+  -- Procedure START_JOB creates a Scheduler Job to execute the given Task
   PROCEDURE start_job(p_job_name IN VARCHAR2, p_task IN VARCHAR2) IS
   BEGIN
     DBMS_SCHEDULER.CREATE_JOB 
@@ -53,7 +51,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
   END;
   
   
-  -- This procedure is started by DBMS_SCHEDULER to execute the task  
+  -- This procedure is started by DBMS_SCHEDULER to execute the given Task  
   PROCEDURE exec_task
   (
     p_job_name      IN VARCHAR2,
@@ -260,7 +258,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
     IF p_proc_id IS NOT NULL THEN
       n_proc_id := p_proc_id;
     ELSE
-      xl.begin_action('Finding the last last_proc_id', 'Started', FALSE);
+      xl.begin_action('Finding the LAST_PROC_ID', 'Started', FALSE);
       SELECT last_proc_id INTO n_proc_id
       FROM cnf_data_flows WHERE data_flow_cd = p_data_flow_cd;
       xl.end_action('Found: '||n_proc_id);
