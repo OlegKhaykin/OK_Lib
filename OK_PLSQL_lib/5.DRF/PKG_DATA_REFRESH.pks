@@ -4,14 +4,10 @@ CREATE OR REPLACE PACKAGE pkg_data_refresh AS
 /*
  =============================================================================
  This package provides a metadata-driven ETL framework.
- Controlling metadata is stored in 2 tables:
- - PME_DATA_REFRESH_JOBS;
- - PME_DATA_REFRESH_LIST;
-
+ 
  It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
-
- Your are allowed to use and change it as you wish, as long as you keep
- here the reference to the original developer - i.e. Oleg Khaykin.
+ Your are allowed to use and change it as you wish, as long as you
+ retain here the reference to the original developer - i.e. Oleg Khaykin.
  
  In other words, you are not allowed to remove this comment!
  =============================================================================

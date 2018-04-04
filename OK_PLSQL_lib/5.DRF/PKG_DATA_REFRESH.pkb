@@ -1,13 +1,21 @@
 CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
 /*
+ =============================================================================
  This package provides a metadata-driven ETL framework.
- 
  Controlling metadata is stored in 2 tables:
  - CNF_DATA_FLOWS;
  - CNF_DATA_FLOW_STEPS;
- 
  Error statistics is stored in LOG_DRF_ERRORS.
+
+ It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
+ Your are allowed to use and change it as you wish, as long as you
+ retain here the reference to the original developer - i.e. Oleg Khaykin.
  
+ In other words, you are not allowed to remove this comment!
+ =============================================================================
+  
+ Change history:
+ -----------------------------------------------------------------------------
  30-Mar-2018, OK: new simplified version;
 */
   MAX_SLEEP_SECONDS CONSTANT PLS_INTEGER := 5;
