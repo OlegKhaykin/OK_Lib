@@ -2,9 +2,18 @@ prompt Creating package PKG_ETL_UTILS
  
 CREATE OR REPLACE PACKAGE pkg_etl_utils AS
 /*
+  =============================================================================
   Package ETL_UTILS contains procedures for performing data transformation operations:
   add data or delete data to/from target tables based on the content of the source views.
 
+  It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
+
+  Your are allowed to use and change it as you wish, as long as you
+  retain the reference to the original developer - i.e. Oleg Khaykin.
+  
+  In other words, you are not allowed to remove this comment!
+  =============================================================================
+ 
   History of changes (newest to oldest):
   ------------------------------------------------------------------------------
   21-Mar-2018, OK: added abibility to do incremental MERGE; 

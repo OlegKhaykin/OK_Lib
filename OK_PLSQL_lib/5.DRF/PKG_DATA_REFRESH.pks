@@ -3,17 +3,17 @@ prompt Creating package PKG_DATA_REFRESH
 CREATE OR REPLACE PACKAGE pkg_data_refresh AS
 /*
  =============================================================================
- This package provides a metadata-driven ETL framework
- for automated data refresh in target DB tables - according to
- the data changes in the source tables that are accessible through
- the corresponding views.
- This is somewhat similar to Oracle materialized views fast refresh mechanism
- except this solution provides more control over the data refresh process
- and does not require MV log creation on the source tables.
-  
+ This package provides a metadata-driven ETL framework.
  Controlling metadata is stored in 2 tables:
  - PME_DATA_REFRESH_JOBS;
  - PME_DATA_REFRESH_LIST;
+
+ It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
+
+ Your are allowed to use and change it as you wish, as long as you keep
+ here the reference to the original developer - i.e. Oleg Khaykin.
+ 
+ In other words, you are not allowed to remove this comment!
  =============================================================================
  
  Change history:
