@@ -1,0 +1,10 @@
+replace script b_whole_l0 
+{
+# back up whole database and archived logs
+ allocate channel d1 type disk;
+ allocate channel d2 type disk;
+ allocate channel d3 type disk;
+ backup incremental level 0 tag b_whole_l0 filesperset 6 format '/dev/backup/prod1/df/df_t%t_s%s_p%p' (database);
+ sql 'ALTER SYSTEM ARCHIVE LOG CURRENT';
+ backup filesperset 20 format '/dev/backup/prod1/al/al_t%t_s%s_p%p' (archivelog all delete input);
+}
