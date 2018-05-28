@@ -5,4 +5,7 @@ insert into cnf_data_flow_steps values('TST_OBJECTS', 1, 1, 'MERGE', 'TST_OK', '
 
 commit;
 
+select * from cnf_data_flows;
+select * from cnf_data_flow_steps;
+
 exec drf.start_data_flow('TST_OBJECTS');
