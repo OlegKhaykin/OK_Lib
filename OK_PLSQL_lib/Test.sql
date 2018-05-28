@@ -17,9 +17,9 @@ begin
   
   etl.add_data
   (
-    p_operation => 'MERGE',
+    p_operation => 'MERGE /*+ parallel(16) */',
     p_tgt => 'tst_ok',
-    p_src => 'all_objects',
+    p_src => 'system_objects',
     p_uk_col_list => 'OWNER,OBJECT_NAME',
     p_whr => 'WHERE object_type in (''TABLE'',''VIEW'')',
     p_commit_at => 500

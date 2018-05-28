@@ -1,12 +1,8 @@
-alter session set current_schema = pt005;
-
 UPDATE dbg_process_logs set result = 'Cancelled', end_time = systimestamp
 where end_time is null
 and proc_id < 82
 ;
 commit;
-
-truncate table tst_ok;
 
 select
   proc_id, name,
@@ -33,12 +29,12 @@ from
 order by proc_id desc;
 
 select * from dbg_log_data
-where proc_id IN (103)
+where proc_id IN (104)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
-order by tstamp desc;
+order by tstamp;
 
 select proc_id, action, cnt, seconds 
 from dbg_performance_data 
-where proc_id = 83
+where proc_id = 104
 order by seconds desc;
