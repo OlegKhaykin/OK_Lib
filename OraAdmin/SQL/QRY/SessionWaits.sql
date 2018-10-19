@@ -4,7 +4,7 @@ WITH sess AS
     s.audsid, s.sid, s.serial#,
     s.username, s.osuser, s.program, s.machine, p.pid, p.spid, status,
     DECODE(ownerid, 2147483644, NULL, TRUNC(ownerid/65536)) parallel_coord_id,
-    DECODE(ownerid, 2147483644, NULL, MOD(ownerid, 65536)) parallel_sess_no 
+    DECODE(ownerid, 2147483644, NULL, MOD(ownerid, 65536)) parent_sess_sid 
   FROM v$session s, v$process p
   WHERE s.username IS NOT NULL AND p.addr = s.paddr
 )

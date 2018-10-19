@@ -1,4 +1,87 @@
-select s.sid, s.machine, s.program, s.username, sn.name, ss.value, sql_address, sql_hash_value
-from v$session s, v$sesstat ss, v$statname sn
-where ss.sid = s.sid and sn.statistic# = ss.statistic#
-and sn.name = 'CPU used by this session' order by value desc
+-- Current session state and stats:
+with
+  sess as
+  (
+    select
+      s.audsid, s.inst_id, s.sid, s.serial#, p.pid, p.spid,
+      decode(s.ownerid, 2147483644, null, trunc(s.ownerid/65536)) parallel_coord_id,
+      decode(s.ownerid, 2147483644, null, mod(s.ownerid,65536)) parent_sess_sid,
+      s.username, s.osuser,
+      s.program, s.module, s.action
+      , s.status, s.blocking_session,
+      s.sql_id, s.sql_child_number, sqlt.sql_text
+    from gv$session s
+    join gv$process p on p.inst_id = s.inst_id and p.addr = s.paddr
+    join gv$sqltext sqlt on sqlt.inst_id = s.inst_id and sqlt.sql_id = s.sql_id and sqlt.piece = 0
+    where s.status = 'ACTIVE'
+    and s.audsid <> sys_context('userenv','sessionid')
+    and s.osuser = 'khayole'
+  ),
+  longops as
+  (
+    select
+      s.audsid, s.sql_text,
+      lo.*
+    from sess s
+    join gv$session_longops lo
+      on lo.inst_id = s.inst_id and lo.sid = s.sid and lo.serial# = s.serial#
+  ),
+  waits as
+  (
+    select
+      --s.*,
+      s.audsid, s.inst_id, s.sid,
+      w.seq#, w.event, w.wait_class, w.state, w.wait_time_micro/1000000 wait_seconds, w.time_since_last_wait_micro/1000000 seconds_since_last_wait,
+      w.p1text, p1, w.p2text, p2, w.p3text, p3
+    from sess s
+    join gv$session_wait w on w.inst_id = s.inst_id and w.sid = s.sid
+  ),
+  stats as
+  (
+    select
+      --s.*,
+      s.audsid, s.inst_id, s.sid,
+      sn.name, ss.value
+    from sess s
+    join gv$sesstat ss
+      on ss.inst_id = s.inst_id and ss.sid = s.sid and value > 0
+    join v$statname sn
+      on sn.statistic# = ss.statistic#
+  ),
+  events as
+  (
+    select
+      s.audsid, s.inst_id, s.sid,
+      se.event, se.time_waited_micro/1000000 waited_seconds
+    from sess s
+    join gv$session_event se on se.inst_id = s.inst_id and se.sid = s.sid
+  ),
+  stats as
+  (
+    select
+      --s.*,
+      s.audsid, s.inst_id, s.sid,
+      sn.name, ss.value
+    from sess s
+    join gv$sesstat ss
+      on ss.inst_id = s.inst_id and ss.sid = s.sid and value > 0
+    join v$statname sn
+      on sn.statistic# = ss.statistic#
+  ),
+  hist as
+  (
+    select
+      --s.*,
+      s.audsid, s.inst_id, s.sid,
+      ash.event,
+      rank() over(partition by s.audsid, s.inst_id, s.sid order by sample_time desc) rnk
+    from sess s
+    join gv$active_session_history ash
+      on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
+  )
+--select * from sess  order by audsid;
+--select * from waits order by audsid;
+--select * from longops order by audsid;
+--select * from stats order by audsid;
+select * from events order by audsid;
+select * from hist where rnk=1 order by audsid;
