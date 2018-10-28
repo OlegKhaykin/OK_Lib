@@ -29,7 +29,7 @@ from
 order by proc_id desc;
 
 select * from dbg_log_data
-where proc_id IN (104)
+where proc_id IN (110)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
 order by tstamp;

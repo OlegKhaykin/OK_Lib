@@ -36,18 +36,6 @@ with
     from sess s
     join gv$session_wait w on w.inst_id = s.inst_id and w.sid = s.sid
   ),
-  stats as
-  (
-    select
-      --s.*,
-      s.audsid, s.inst_id, s.sid,
-      sn.name, ss.value
-    from sess s
-    join gv$sesstat ss
-      on ss.inst_id = s.inst_id and ss.sid = s.sid and value > 0
-    join v$statname sn
-      on sn.statistic# = ss.statistic#
-  ),
   events as
   (
     select
@@ -65,8 +53,8 @@ with
     from sess s
     join gv$sesstat ss
       on ss.inst_id = s.inst_id and ss.sid = s.sid and value > 0
-    join v$statname sn
-      on sn.statistic# = ss.statistic#
+    join gv$statname sn
+      on sn.inst_id = s.inst_id and sn.statistic# = ss.statistic#
   ),
   hist as
   (
