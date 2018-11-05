@@ -1,7 +1,8 @@
 UPDATE dbg_process_logs set result = 'Cancelled', end_time = systimestamp
 where end_time is null
-and proc_id < 82
+and proc_id = 128
 ;
+
 commit;
 
 select
@@ -29,12 +30,12 @@ from
 order by proc_id desc;
 
 select * from dbg_log_data
-where proc_id IN (110)
+where proc_id IN (359)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
-order by tstamp;
+order by tstamp desc;
 
 select proc_id, action, cnt, seconds 
 from dbg_performance_data 
-where proc_id = 104
+where proc_id = 284
 order by seconds desc;

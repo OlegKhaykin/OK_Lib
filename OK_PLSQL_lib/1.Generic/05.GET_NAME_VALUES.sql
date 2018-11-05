@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION get_name_values(i_str IN VARCHAR2) RETURN tab_name_values AS
+CREATE OR REPLACE FUNCTION get_name_values(p_str IN VARCHAR2, p_separator IN VARCHAR2 DEFAULT ',') RETURN tab_name_values AS
   ret tab_name_values;
 BEGIN
 /*
@@ -12,8 +12,8 @@ BEGIN
     SELECT TRIM(SUBSTR(line, 1, eq-1)) name, TRIM(SUBSTR(line, eq+1)) value
     FROM
     (
-      SELECT VALUE(t) line, INSTR(VALUE(t), '=') eq
-      FROM TABLE(split_string(i_str)) t
+      SELECT TRIM(VALUE(t)) line, INSTR(TRIM(VALUE(t)), '=') eq
+      FROM TABLE(split_string(p_str, p_separator)) t
     )
   );
  
