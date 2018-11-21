@@ -1,6 +1,6 @@
 prompt Creating package body PKG_ETL_UTILS
 
-CREATE OR REPLACE PACKAGE BODY pkg_etl_utils_new AS
+CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
 /*
   =============================================================================
   Package ETL_UTILS contains procedures for performing data transformation operations:
