@@ -2,16 +2,13 @@ prompt Creating package body PKG_ETL_UTILS
 
 CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
 /*
-  =============================================================================
+  =================================================================================================
   Package ETL_UTILS contains procedures for performing data transformation operations:
   add data or delete data to/from target tables based on the content of the source views.
 
-  It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
-  Your are allowed to use and change it as you wish, as long as you
-  retain here the reference to the original developer - i.e. Oleg Khaykin.
-  
-  In other words, you are not allowed to remove this comment!
-  =============================================================================
+  It was developed by Oleg Khaykin: 1-201-625-3161. OlegKhaykin@gmail.com. 
+  Your are allowed to use and change it as you wish.
+  =================================================================================================
   
   History of changes (newest to oldest):
   ------------------------------------------------------------------------------
@@ -206,7 +203,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     v_del_col         VARCHAR2(30);
     v_del_col_dtype   VARCHAR2(30);
     v_del_val         VARCHAR2(30);
-    v_non_del_val     VARCHAR2(30);
+    v_active_val     VARCHAR2(30);
     v_version_col     VARCHAR2(30);
     v_since_col       VARCHAR2(30);
     v_since_expr      VARCHAR2(30);
@@ -252,14 +249,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           SELECT 's.'||tc.column_name
           FROM tmp_all_columns tc
           JOIN tmp_all_columns sc ON sc.column_name = tc.column_name AND sc.side = 'SRC'
-          WHERE tc.side = 'TGT' AND tc.column_name <> NVL(v_version_col, '$')
+          WHERE tc.side = 'TGT' AND tc.column_name NOT IN (NVL(v_version_col, '$'), NVL(v_del_col, '$'))
           ORDER BY tc.column_id)
         ),
         concat_v2_set(CURSOR(
           SELECT sc.column_name||' '||sc.data_type
           FROM tmp_all_columns sc
           JOIN tmp_all_columns tc ON tc.column_name = sc.column_name AND tc.side = 'TGT'
-          WHERE sc.side = 'SRC' AND sc.column_name <> NVL(v_version_col, '$')
+          WHERE sc.side = 'SRC' AND sc.column_name NOT IN (NVL(v_version_col, '$'), NVL(v_del_col, '$'))
           ORDER BY sc.column_id)
         )
       INTO v_ins_cols, v_sel_cols
@@ -347,7 +344,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           FROM dual;
           xl.end_action(v_on_list);
           
-          xl.begin_action('Setting V_CHANGED_COND', 'Started', FALSE);
+          xl.begin_action('Setting V_CHANGED_COND', 'Started', TRUE);
+          v_changed_cond := TRIM(UPPER(p_check_changed));
           CASE
             WHEN v_changed_cond = 'NONE' THEN v_changed_cond := NULL;
             WHEN v_changed_cond NOT LIKE 'EXCEPT%' AND v_changed_cond <> 'ALL' THEN
@@ -360,12 +358,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
               SELECT 'LNNVL(t.'||column_name||'=s.'||column_name||')'
               FROM
               (
-                SELECT column_name FROM tmp_all_columns WHERE side = 'TGT'
-                INTERSECT
+                SELECT column_name FROM tmp_all_columns WHERE side = 'TGT' AND column_name <> NVL(v_del_col, '$')
+               INTERSECT
                 SELECT column_name FROM tmp_all_columns WHERE side = 'SRC'
-                MINUS
+               MINUS
                 SELECT t.COLUMN_VALUE FROM TABLE(CAST(split_string(v_match_cols) AS tab_v256)) t
-                MINUS
+               MINUS
                 SELECT t.COLUMN_VALUE FROM TABLE(CAST(split_string(CASE WHEN v_changed_cond LIKE 'EXCEPT%' THEN LTRIM(REPLACE(v_changed_cond, 'EXCEPT')) END) AS tab_v256)) t
               )
             ), ' OR ')
@@ -375,7 +373,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         
           IF b_del_notfound THEN
             IF v_del_col IS NOT NULL THEN
-              v_changed_cond := '('||v_changed_cond||') AND s.etl$src_indicator = 1 OR s.etl$src_indicator IS NULL AND t.'||v_del_col||'='||v_non_del_val;
+              v_changed_cond := '('||v_changed_cond||') AND s.etl$src_indicator = 1 OR s.etl$src_indicator IS NULL AND t.'||v_del_col||'='||v_active_val;
             END IF;
           END IF;
           xl.end_action(v_changed_cond);
@@ -384,11 +382,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         xl.begin_action('Setting V_UPD_LIST', 'Started', FALSE);
         SELECT concat_v2_set(CURSOR(
           SELECT 't.'||column_name||'=s.'||column_name
-          FROM tmp_all_columns WHERE side = 'TGT'
-          INTERSECT
+          FROM tmp_all_columns
+          WHERE side = 'TGT' AND column_name <> NVL(v_del_col, '$')
+         INTERSECT
           SELECT 't.'||column_name||'=s.'||column_name
           FROM tmp_all_columns WHERE side = 'SRC'
-          MINUS
+         MINUS
           SELECT 't.'||t.COLUMN_VALUE||'=s.'||t.COLUMN_VALUE
           FROM TABLE(CAST(split_string(v_match_cols) AS tab_v256)) t))
         INTO v_upd_list
@@ -506,18 +505,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       IF REGEXP_LIKE(p_delete, 'then', 'i') THEN
         v_del_col := UPPER(RTRIM(REGEXP_SUBSTR(p_delete, 'THEN\s+([^=]+)', 1, 1, 'i', 1)));
         v_del_val := TRIM(REGEXP_SUBSTR(p_delete, 'THEN[^=]+=([^:]+)', 1, 1, 'i', 1)); 
-        v_non_del_val := TRIM(REGEXP_SUBSTR(p_delete, ':(.+)', 1, 1, 'i', 1));
+        v_active_val := TRIM(REGEXP_SUBSTR(p_delete, ':(.+)', 1, 1, 'i', 1));
         v_del_cond := RTRIM(REGEXP_SUBSTR(p_delete, '^IF\s+(.+) THEN', 1, 1, 'i', 1));
       ELSE
         v_del_cond := TRIM(SUBSTR(p_delete, 4));
-      END IF;
-      
-      IF v_del_col IS NOT NULL AND v_match_cols = 'ROWID' THEN
-        Raise_Application_Error
-        (
-          -20000, 'If the target table is pre-joined in the source then please include the '||
-          v_del_col||' column into the source view/query and do not use P_DELETE parameter.'
-        );
       END IF;
       
       IF UPPER(v_del_cond) = 'NOTFOUND' THEN
@@ -531,9 +522,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           'Instead, make sure that those columns have identical names. Then, the target column will be set to the source value automatically.'
         );
       END IF; 
-      xl.end_action('V_DEL_COND='||v_del_cond||'; V_DEL_COL='||v_del_col||'; V_DEL_VAL='||v_del_val||'; V_NON_DEL_VAL='||v_non_del_val);
+      xl.end_action('V_DEL_COND='||v_del_cond||'; V_DEL_COL='||v_del_col||'; V_DEL_VAL='||v_del_val||'; v_active_val='||v_active_val);
       
-      IF v_del_col IS NOT NULL AND (v_del_val IS NULL OR v_non_del_val IS NULL) THEN
+      IF v_del_col IS NOT NULL AND (v_del_val IS NULL OR v_active_val IS NULL) THEN
         Raise_Application_Error(-20000, 'Malformed P_DELETE!');
       END IF;
     END IF;
@@ -654,13 +645,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       CASE WHEN p_versions IS NOT NULL AND v_operation IN ('MERGE','UPDATE') THEN ', opr.COLUMN_VALUE'|| 
         CASE WHEN p_commit_at <= 0 THEN ' etl$operation' END
       END ||
-      CASE WHEN v_del_col IS NOT NULL AND (b_del_notfound OR p_commit_at <= 0) THEN ',
-    ' ||
-        CASE WHEN v_operation = 'INSERT' THEN v_non_del_val
-        ELSE 'CASE WHEN '||v_del_cond||' THEN '||v_del_val||' ELSE '||v_non_del_val||' END'
-        END ||
-        CASE WHEN v_operation IN ('MERGE','UPDATE') AND p_commit_at <= 0 THEN ' '||v_del_col END
-      END || 
       CASE WHEN v_version_col IS NOT NULL THEN
         CASE WHEN v_operation = 'INSERT' AND p_commit_at <= 0 THEN ', 1 '
         WHEN v_operation IN ('MERGE','UPDATE') THEN ', NVL(' ||
@@ -672,7 +656,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         CASE WHEN p_versions IS NOT NULL THEN ', '|| v_since_expr ||
           CASE WHEN c_until_nullable = 'Y' THEN ', NULL ' ELSE ', DATE ''9999-12-31''' END
         END ||
-        CASE WHEN v_del_col IS NOT NULL THEN v_non_del_val END ||
+        CASE WHEN v_del_col IS NOT NULL THEN v_active_val END ||
         CASE WHEN v_gen_vals IS NOT NULL THEN ', '|| v_gen_vals END
       END ||
       CASE WHEN p_commit_at > 0 THEN '
@@ -681,14 +665,15 @@ FROM ' ||
       CASE WHEN b_del_notfound AND v_match_cols <> 'ROWID' THEN '
 (
   SELECT 1 etl$src_indicator, s.* FROM '||v_src_schema||'.'||v_src_table||' s' ||
-      CASE WHEN p_where IS NOT NULL THEN '
+        CASE WHEN p_where IS NOT NULL THEN '
   WHERE '||p_where
-      END || '
+        END || '
 )'
       ELSE v_src_schema||'.'||v_src_table
       END || ' s' ||
-      CASE WHEN (b_del_notfound OR p_versions IS NOT NULL) AND v_match_cols <> 'ROWID' THEN '
-'       || CASE WHEN b_del_notfound THEN 'FULL' ELSE 'LEFT' END || ' JOIN '||v_tgt_schema||'.'||v_tgt_table||' t
+      CASE WHEN (b_del_notfound OR p_versions IS NOT NULL OR v_operation = 'UPDATE' AND v_del_col IS NOT NULL) AND v_match_cols <> 'ROWID' THEN '
+'       || 
+        CASE WHEN b_del_notfound THEN 'FULL ' ELSE 'LEFT ' END || 'JOIN '||v_tgt_schema||'.'||v_tgt_table||' t
   ON '  || v_on_list
       END ||
       CASE WHEN v_operation IN ('MERGE','UPDATE') THEN      
@@ -736,8 +721,7 @@ ON (' ||
 WHEN MATCHED THEN UPDATE SET ' ||
         CASE WHEN p_versions IS NOT NULL THEN 't.'||v_until_col||' = '||v_until_expr
         ELSE v_upd_list ||
---          CASE WHEN v_del_col IS NOT NULL THEN ', t.'||v_del_col||' = CASE WHEN '||v_del_cond||' THEN '||v_del_val||' ELSE '||v_non_del_val||' END' END 
-          CASE WHEN v_del_col IS NOT NULL THEN ', t.'||v_del_col||' = s.'||v_del_col END 
+          CASE WHEN v_del_col IS NOT NULL THEN ', t.'||v_del_col||' = CASE WHEN '||v_del_cond||' THEN '||v_del_val||' ELSE '||v_active_val||' END' END 
         END ||
         CASE WHEN v_changed_cond IS NOT NULL AND (NOT b_del_notfound AND p_versions IS NULL OR v_match_cols = 'ROWID') THEN '
 WHERE ' || v_changed_cond
@@ -763,16 +747,19 @@ VALUES
         CASE WHEN v_version_col IS NOT NULL THEN ', s.'||v_version_col||'+1' END ||
         CASE WHEN p_versions IS NOT NULL THEN ', '||v_since_expr END ||
         CASE WHEN c_until_nullable = 'N' THEN ', DATE ''9999-12-31''' END ||
-        CASE WHEN v_del_col IS NOT NULL THEN  ', s.'||v_del_col END ||
+        CASE WHEN v_del_col IS NOT NULL THEN  ', CASE WHEN '||v_del_cond||' THEN '||v_del_val||' ELSE '||v_active_val||' END' END ||
         CASE WHEN v_gen_vals IS NOT NULL THEN ', '|| v_gen_vals END || '
-)'      ||
+)
+WHERE 1=1' ||
         CASE WHEN p_versions IS NOT NULL THEN '
-WHERE s.etl$operation = ''INSERT'''
+AND s.etl$operation = ''INSERT'''
+        END ||
+        CASE WHEN v_operation = 'UPDATE' AND v_del_col IS NOT NULL THEN '
+AND s.row_id IS NOT NULL'
+        END ||
+        CASE WHEN v_del_cond IS NOT NULL AND v_del_col IS NULL THEN '
+AND NOT ('||v_del_cond ||')'
         END
-      END ||
-      CASE WHEN v_del_cond IS NOT NULL AND v_del_col IS NULL THEN ' 
-'       ||
-        CASE WHEN p_versions IS NULL THEN 'WHERE' ELSE 'AND' END || ' NOT ('||v_del_cond ||')'
       END
     ELSE
 'INSERT '||v_hint||' INTO '||v_tgt_schema||'.'||v_tgt_table || '
@@ -789,7 +776,7 @@ WHERE s.etl$operation = ''INSERT'''
 VALUES
 (
   '     || REPLACE(LOWER(v_ins_cols), 's.', 'bfr(i).') || 
-        CASE WHEN v_del_col IS NOT NULL THEN ', '||v_non_del_val END ||
+        CASE WHEN v_del_col IS NOT NULL THEN ', '||v_active_val END ||
         CASE WHEN p_versions IS NOT NULL THEN 
           CASE WHEN v_version_col IS NOT NULL THEN ', 1' END ||
           ', '||v_since_expr||
@@ -814,7 +801,6 @@ LOG ERRORS INTO '||v_err_schema||'.'||v_err_table||' (:tag) REJECT LIMIT UNLIMIT
         CASE WHEN v_match_cols = 'ROWID' OR b_del_notfound OR p_versions IS NOT NULL THEN ', row_id VARCHAR2(18)' END ||
         CASE WHEN b_del_notfound THEN ', etl$src_indicator NUMBER(1)' END ||
         CASE WHEN p_versions IS NOT NULL THEN ', etl$operation CHAR(6)' END ||
-        CASE WHEN v_del_col IS NOT NULL AND b_del_notfound THEN ', '||v_del_col||' '||v_del_col_dtype END ||
         CASE WHEN v_version_col IS NOT NULL THEN ', '||v_version_col ||' NUMBER(3)' END
       END ||');';
       

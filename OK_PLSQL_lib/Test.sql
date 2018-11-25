@@ -32,43 +32,20 @@ OR s.object_type = 'TABLE' AND
   OR t.last_ddl_time <> s.last_ddl_time
 );
 
+select * from v_all_tables;
+
 truncate table tst_ok;
 
 begin
   xl.open_log('TST-OK', 'Initial population, no versions', true);
 
-  pkg_etl_utils_new.add_data
+  pkg_etl_utils.add_data
   (
     p_operation       => 'replace',
     p_target          => 'tst_ok',
     p_source          => 'all_objects',
     p_where           => q'[owner = 'OK' AND object_type = 'TABLE']',
     p_hint            => 'all_rows',
-    p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
-    p_commit_at       => -1
-  );
-
-  xl.close_log('Successfully completed');
-exception
- when others then
-  xl.close_log(sqlerrm, true);
-  raise;
-end;
-/
-
-begin
-  xl.open_log('TST-OK', 'Simple merge, no versions', true);
-
-  pkg_etl_utils_new.add_data
-  (
-    p_operation       => 'merge', p_match_cols => 'owner, object_name',
-    p_target          => 'tst_ok',
-    p_source          => 'all_objects',
-    p_where           => q'[owner = 'OK' AND object_type = 'TABLE']',
-    p_hint            => 'all_rows',
-    p_check_changed  => 'except object_type',
-    p_delete          => 'if notfound',
---    p_delete          => q'[IF NOTFOUND then deleted_flag='Y':'N']',
     p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
     p_commit_at       => 10
   );
@@ -82,9 +59,35 @@ end;
 /
 
 begin
+  xl.open_log('TST-OK', 'Simple merge, no versions', true);
+
+  pkg_etl_utils.add_data
+  (
+    p_operation       => 'merge', 
+    p_match_cols      => 'owner, object_name',
+    p_target          => 'tst_ok',
+    p_source          => 'all_objects',
+    p_where           => q'[owner = 'OK' AND object_type = 'TABLE']',
+    p_hint            => 'all_rows',
+    p_check_changed  => 'except object_type',
+--    p_delete          => 'if notfound',
+    p_delete          => q'[IF NOTFOUND then deleted_flag='Y':'N']',
+    p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
+    p_commit_at       => -1
+  );
+
+  xl.close_log('Successfully completed');
+exception
+ when others then
+  xl.close_log(sqlerrm, true);
+  raise;
+end;
+/
+
+begin
   xl.open_log('TST-OK', 'Merge by ROWID, no versions', true);
 
-  pkg_etl_utils_new.add_data
+  pkg_etl_utils.add_data
   (
     p_operation       => 'merge', 
     p_target          => 'tst_ok',
@@ -92,10 +95,10 @@ begin
     p_where           => q'[owner = 'OK']',
     p_hint            => 'all_rows',
     p_match_cols      => 'rowid',
---    p_check_changed   => 'except object_type',
 --    p_delete          => 'if notfound',
---    p_delete          => q'[IF NOTFOUND then deleted_flag='Y':'N']',
---    p_delete          => q'[if s.deleted_flag='Y']',
+--    p_delete          => 'if s.deleted_flag=''Y''',
+--    p_delete          => q'[if notfound then deleted_flag='Y':'N']',
+--    p_check_changed   => 'except object_type',                        -- should be ERROR!
     p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
     p_commit_at       => -1
   );
@@ -138,7 +141,7 @@ SELECT
   NVL(s.last_ddl_time, t.last_ddl_time) AS last_ddl_time,
   t.ROWID AS row_id,
   CASE WHEN s.owner IS NOT NULL THEN 1 END AS etl$src_indicator,
-  CASE WHEN s.owner IS NULL THEN 'Y' ELSE 'N' END AS deleted_flag, 
+  NVL2(s.owner, 'N', 'Y') deleted_flag,
   NVL(t.version_num, 0) AS version_num 
 FROM sys.all_objects s
 FULL JOIN tst_ok_ver t
@@ -154,23 +157,25 @@ WHERE
     t.deleted_flag = 'N' AND s.owner IS NULL
   )
 )
-AND NVL(s.object_type, '$') = 'TABLE';
+AND NVL(s.object_type, t.object_type) = 'TABLE';
+
+select * from v_all_tables_ver where owner = 'OK';
 
 truncate table tst_ok_ver;
 
 begin
   xl.open_log('TST-OK', 'Initial population with versions', true);
 
-  pkg_etl_utils_new.add_data
+  pkg_etl_utils.add_data
   (
     p_operation       => 'replace',
     p_target          => 'tst_ok_ver',
     p_source          => 'all_objects',
     p_where           => q'[s.owner = 'OK' AND s.object_type = 'TABLE']',
     p_generate        => q'[source_system, object_vid = 'PCS', seq_tst_ok.nextval]',
---    p_check_changed  => 'except object_type',
---    p_delete          => 'if notfound',
---    p_delete          => q'[if notfound then deleted_flag='Y':'N']',
+--    p_check_changed  => 'except object_type',                         -- should be ERROR!
+--    p_delete          => 'if notfound',                               -- should be ERROR!
+--    p_delete          => q'[if notfound then deleted_flag='Y':'N']',  -- should be ERROR!
     p_versions        => q'[version_num; valid_from_dt=sysdate; valid_until_dt=sysdate-interval '1' second]',
     p_commit_at       => -1
   );
@@ -186,7 +191,7 @@ end;
 begin
   xl.open_log('TST-OK', 'Merge with versioning', true);
 
-  pkg_etl_utils_new.add_data
+  pkg_etl_utils.add_data
   (
     p_operation       => 'merge',
     p_target          => 'tst_ok_ver',
@@ -194,8 +199,11 @@ begin
     p_where           => q'[s.object_type = 'TABLE' AND s.owner = 'OK']',
     p_match_cols      => 'owner, object_name',
     p_generate        => q'[source_system, object_vid = 'PCS', seq_tst_ok.nextval]',
+    p_check_changed   => 'except object_type',
+--    p_delete          => 'if notfound',                           -- should be ERROR!
+    p_delete          => q'[if notfound then deleted_flag='Y':'N']',
     p_versions        => q'[version_num; valid_from_dt=sysdate; valid_until_dt=sysdate-interval '1' second]',
-    p_commit_at       => -1
+    p_commit_at       => 10
   );
 
   xl.close_log('Successfully completed');
@@ -209,17 +217,19 @@ end;
 begin
   xl.open_log('TST-OK', 'Merge with versioning', true);
 
-  pkg_etl_utils_new.add_data
+  pkg_etl_utils.add_data
   (
-    p_operation       => 'merge', 
+    p_operation       => 'update', 
     p_target          => 'tst_ok_ver',
     p_source          => 'v_all_tables_ver',
     p_where           => q'[s.owner = 'OK']',
     p_match_cols      => 'rowid',
     p_generate        => q'[source_system, object_vid = 'PCS', seq_tst_ok.nextval]',
-    p_delete          => q'[if notfound then deleted_flag='Y']', 
+--    p_check_changed   => 'except object_type',                    -- should be ERROR!
+--    p_delete          => 'if notfound',                           -- should be ERROR!
+--    p_delete          => q'[if notfound then deleted_flag='Y':'N']',
     p_versions        => q'[version_num; valid_from_dt=sysdate; valid_until_dt=sysdate-interval '1' second]',
-    p_commit_at       => -1
+    p_commit_at       => 10
   );
 
   xl.close_log('Successfully completed');
