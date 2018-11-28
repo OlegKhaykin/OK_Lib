@@ -22,7 +22,7 @@ CREATE TABLE cnf_data_flow_steps
   tgt           VARCHAR2(61) NOT NULL,
   src           VARCHAR2(1000) NOT NULL,
   hint          VARCHAR2(500),
-  uk_col_list   VARCHAR2(256),
+  match_cols    VARCHAR2(256),
   whr           VARCHAR2(256),
   err           VARCHAR2(61),
   commit_at     NUMBER(10) DEFAULT 0 NOT NULL,

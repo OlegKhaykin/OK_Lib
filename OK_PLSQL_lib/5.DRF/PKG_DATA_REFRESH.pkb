@@ -8,10 +8,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
  Error statistics is stored in LOG_DRF_ERRORS.
 
  It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
- Your are allowed to use and change it as you wish, as long as you
- retain here the reference to the original developer - i.e. Oleg Khaykin.
- 
- In other words, you are not allowed to remove this comment!
+ Your are allowed to use and change it as you wish.
  =============================================================================
   
  Change history:
@@ -168,12 +165,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
          WHEN 'PROCEDURE' THEN 
           r.tgt||'('''||p_data_flow_cd||''');'
          WHEN 'DELETE' THEN
-         'etl.delete_data(p_tgt=>'''||r.tgt||''', p_src=>q''['||r.src||
-         ']'', p_whr=>q''['||r.whr||']'', p_hint=>'''||r.hint||''', p_commit_at=>'||r.commit_at||');'
-         ELSE -- r.operation IN ('INSERT','APPEND','MERGE' 'REPLACE','EQUALIZE'):
-         'etl.add_data(p_operation=>'''||r.operation||''', p_tgt=>'''||r.tgt||
-         ''', p_src=>q''['||r.src||']'', p_uk_col_list=>'''||r.uk_col_list||
-         ''',p_whr=>q''['||r.whr||']'', p_hint=>'''||r.hint||
+         'etl.delete_data(p_target=>'''||r.tgt||''', p_source=>q''['||r.src||
+         ']'', p_where=>q''['||r.whr||']'', p_hint=>'''||r.hint||''', p_commit_at=>'||r.commit_at||');'
+         ELSE -- r.operation IN ('INSERT','UPDATE','MERGE' 'REPLACE'):
+         'etl.add_data(p_operation=>'''||r.operation||''', p_target=>'''||r.tgt||
+         ''', p_source=>q''['||r.src||']'', p_match_cols=>'''||r.match_cols||
+         ''',p_where=>q''['||r.whr||']'', p_hint=>'''||r.hint||
          ''', p_errtab=>'''||r.err||''', p_commit_at=>'||r.commit_at||');'
         END || ' END;';
         
@@ -283,8 +280,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
       etl.add_data
       (
         p_operation => 'MERGE',
-        p_tgt => 'LOG_DRF_ERRORS',
-        p_src => 'SELECT
+        p_target => 'LOG_DRF_ERRORS',
+        p_source => 'SELECT
             '''||p_data_flow_cd||''' data_flow_cd,
             pl.proc_id,
             '''||r.err||''' AS err_table,

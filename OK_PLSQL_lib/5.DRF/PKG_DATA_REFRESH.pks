@@ -6,10 +6,7 @@ CREATE OR REPLACE PACKAGE pkg_data_refresh AS
  This package provides a metadata-driven ETL framework.
  
  It was developed by Oleg Khaykin. 1-201-625-3161. OlegKhaykin@gmail.com. 
- Your are allowed to use and change it as you wish, as long as you
- retain here the reference to the original developer - i.e. Oleg Khaykin.
- 
- In other words, you are not allowed to remove this comment!
+ Your are allowed to use and change it as you wish.
  =============================================================================
  
  Change history:
@@ -25,7 +22,7 @@ CREATE OR REPLACE PACKAGE pkg_data_refresh AS
   -- Procedure HEARTBEAT updates HEARTBEAT_DT in CNF_DATA_FLOWS
   PROCEDURE heartbeat(p_data_flow_cd IN VARCHAR2); 
   
-  -- Procedure EXEC_TASK is started by via DBMS_SCHEDULER to execute one Data Flow step   
+  -- Procedure EXEC_TASK is started by DBMS_SCHEDULER to execute one Data Flow step   
   PROCEDURE exec_task
   (
     p_job_name      IN VARCHAR2,
