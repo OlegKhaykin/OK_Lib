@@ -3,7 +3,7 @@ prompt Creating package PKG_ETL_UTILS
 CREATE OR REPLACE PACKAGE pkg_etl_utils AS
 /*
   =================================================================================================
-  Package ETL_UTILS contains procedures for performing data transformation operations:
+  Package ETL_UTILS contains procedures for performing ETL operations:
   add data or delete data to/from target tables based on the content of the source views.
 
   It was developed by Oleg Khaykin: 1-201-625-3161. OlegKhaykin@gmail.com. 
@@ -14,18 +14,18 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
   20-Nov-2018, OK: new version
   =================================================================================================
 
-  Procedure ADD_DATA selects data from the specified source table/view/query (parameter P_SOURCE)
-  optionally applying the filter condition specified by the parameter P_WHERE.
-  Depending on the parameter P_OPERATION, it either inserts all or merges the new/changed
-  source rows into the target table specified by the parameter P_TARGET.
+  Procedure ADD_DATA selects data from the specified source table/view/query (parameter P_SOURCE),
+  optionally applying a filter condition specified by the parameter P_WHERE.
+  Depending on the parameter P_OPERATION (INSERT, UPDATE, MERGE or REPLACE), it either inserts all 
+  or merges the new/changed source rows into the target table specified by the parameter P_TARGET.
   The source and the target columns are matched by their names, not by their positions.
   If P_OPERATION = 'REPLACE', then the procedure first truncates the target table
   and then inserts all the source rows.
   
   Other parameters:
   -------------------------------------------------------------------------------------------------
-  - P_MATCH_COLS - a comma-separated list of the columns on which to match
-    the source and the target rows during MERGE/UPDATE operations.
+  - P_MATCH_COLS - a comma-separated list of the columns on which to match the source and the target
+    rows during MERGE/UPDATE operations.
     If not specified, then matching is done on all the columns of the target table's Primary Key.
     
     Matching on ROWID.
@@ -34,33 +34,30 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
     and specify: P_MATCH_COLS => 'ROWID'. 
     In that case, the target (t) and the source (s) will be matched on t.ROWID = s.row_id.
     Also, in this case you should include the following columns in the source view/query:
-    - ETL$SRC_INDICATOR - if you may use NOTFOUND deletion condition.
+    - ETL$SRC_INDICATOR - if you use NOTFOUND deletion condition.
        It should have value 1 when a matching source row exists; otherwise - any other value or NULL.
        Please, see below the description of the P_DELETE parameter.
-    - <deleted_flag> column - if you are using logical deletion. (You cannot use P_DELETE parameter in this case!).
     - <version_number> column calculated as NVL(t.<version_number>, 0) - if the target table
       has such column. Please, see below the description of the P_VERSIONS parameter.
                                 
-  - P_CHECK_CHANGED:
-    - 'ALL' - check for changes all columns that are not used for matching;
+  - P_CHECK_CHANGED - defines what columns should be checked for changes in UPDATE/MERGE operations:
+    - 'ALL' - check for changes all the columns that are not used for matching;
       perform update only if some of these columns have changed - i.e. their values
       on the source row are different from the values on the matching target row.
     - 'NONE' - do not check for changes, perform update regardless.
     - '<comma-separated list of columns>' - check for changes only the listed columns,
-      perform updates only if some of them have changed.
+      perform update only if some of them have changed.
     - 'EXCEPT <list of columns>' - like in case of 'ALL' but also exclude the listed here columns.
       
-  - P_GENERATE should be in the form:
+  - P_GENERATE - defines logic of populating some target columns; should be in the form:
     <column 1>, <column 2> ... = <expression 1>, <expression 2> ...
-    where <column 1> ... <column *> should be replaced with actual column names
-    and <expression 1> ... <expression *> - with actual expressions.
     
     For example:
     q'[vid, cob_date = my_sequence.NEXTVAL, SYS_CONTEXT('IDL_CONTEXT','COB_DATE')]'
     Lower/Upper case is important only in string literals. Spaces around "=" and "," are optional.
     
     This data generation occurs ONLY ON THE NEWLY INSERTED ROWS, not on the updated ones!
-    It is mainly used for generating surrogate keys out of sequences - like VID column
+    It is mainly used for generating surrogate keys out of sequences - like the VID column
     in the above example. The other column - COB_DATE - could be included into the source view/query
     instead, in which case it would be assigned ON BOTH THE NEWLY INSERTED ROWS AND THE UPDATED ONES.
     
@@ -92,9 +89,9 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
     
     If you are using NOTFOUND condition together with ROWID matching (see P_MATCH_COLS above),
     then your source view/query should have the column ETL$SRC_INDICATOR having value 1 
-    when the source row exists and being NULL otherwise.
-    To achieve that, your source query/view should use either OUTER JOIN your source to the target table
-    ou use FULL JOIN between source and target.
+    when the source row exists and having some other value or being NULL otherwise.
+    To achieve that, your source query/view should either OUTER JOIN your source to the target table
+    ou use FULL JOIN between the source and the target.
     
   - P_VERSIONS defines versioning logic. The complete form is:
     <version column>; <from column>=<from expession>; <until column>=<until expression>  
@@ -104,31 +101,31 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
     the procedure will "end-date" them by setting <until column> = <until expression>
     and then will insert new rows with new attribute values, with <version column> increased by 1,
     with <from column> = <from expression> and with <until column> being set to either '31-DEC-9999' or NULL -
-    - depending on whether that column is mandatory or nullable.
+    - depending on whether <until column> is mandatory or nullable.
     Here, the "current" rows are those with <until column> being either '31-DEC-9999' or NULL.
     
     The target table may not have a version number column. In that case,
     <version column> should be omitted in P_VERSIONS parameter, for example like this:
     q'[START_TS=SYSTIMESTAMP; END_TS=SYSTIMESTAMP - INTERVAL '1' SECOND]'.
     
-    The From/Until expressions can be omitted as well together with the preceding "=".
-    For example: 'START_DT;END_DT'
-    In this case, the version numbers will not be assigned and the default
-    From/Until expressions will be used: TRUNC(SYSDATE) and TRUNC(SYSDATE)-1 respectively.
+    The From/Until expressions can be omitted as well; for example: 'START_DT;END_DT'
+    In this case, the default From/Until expressions will be used:
+    TRUNC(SYSDATE) and TRUNC(SYSDATE)-1 respectively.
     
-    If you are using <version column> together with ROWID matching, then
-    you should include this column into your source query/view.
+    If you are using <version column> together with ROWID matching, then you should have this column
+    in your source query/view, calculated as NVL(t.version_num, 0) AS version_num.
     
     Note: with versioning, you cannot physically delete data! Therefore, if you need, you must use
     logical deletion: i.e in the P_DELETE condition you must have "THEN <action>" or, 
-    you should have a <deleted flag> column in both the source and the target not use P_DELETE at all.
+    you should have a <deleted flag> column in both the source and the target and not use P_DELETE at all.
   
   - P_COMMIT_AT: 0 - do not commit, negative number - commit once at the end,
                  positive N - commit after processing every N source rows.
     
   - P_ADD_CNT - this output parameter gets the number of the added+changed+deleted rows.
   - P_ERR_CNT - gets the number of the source rows that have been rejected and placed into the error table (P_ERRTAB).
-  - If P_ERRTAB is not specified then the whole transaction is cancelled and the procedure errors-out in case of even one error.
+  - If P_ERRTAB is not specified then the whole transaction is rolled back and the procedure errors-out
+    in case of even one error.
 */
   PROCEDURE add_data
   (
@@ -143,7 +140,7 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
     p_delete          IN VARCHAR2 DEFAULT NULL, -- see in the procedure description above
     p_versions        IN VARCHAR2 DEFAULT NULL, -- see in the procedure description above 
     p_commit_at       IN NUMBER   DEFAULT 0,    -- see in the procedure description above
-    p_errtab          IN VARCHAR2 DEFAULT NULL, -- optional error log table,
+    p_errtab          IN VARCHAR2 DEFAULT NULL, -- optional DML error log table name,
     p_add_cnt         IN OUT PLS_INTEGER,       -- number of added/changed/deleted rows
     p_err_cnt         IN OUT PLS_INTEGER        -- number of errors
   );
