@@ -3,11 +3,12 @@ prompt Creating package PKG_ETL_UTILS
 CREATE OR REPLACE PACKAGE pkg_etl_utils AS
 /*
   =================================================================================================
-  Package ETL_UTILS contains procedures for performing ETL operations:
-  add data or delete data to/from target tables based on the content of the source views.
+  Package ETL_UTILS contains procedures for performing ETL operations.
+  There are two main procedures in this package: 1)ADD_DATA and 2)DELETE_DATA.
+  Please, see their descriptions below.
 
-  It was developed by Oleg Khaykin: 1-201-625-3161. OlegKhaykin@gmail.com. 
-  Your are allowed to use and change it as you wish.
+  The package was developed by Oleg Khaykin: 1-201-625-3161. OlegKhaykin@gmail.com. 
+  Your are free to use and change it as you wish.
  
   History of changes (newest to oldest):
   -------------------------------------------------------------------------------------------------

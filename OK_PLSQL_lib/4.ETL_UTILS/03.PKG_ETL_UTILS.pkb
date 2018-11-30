@@ -206,11 +206,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     v_active_val     VARCHAR2(30);
     v_version_col     VARCHAR2(30);
     v_since_col       VARCHAR2(30);
-    v_since_expr      VARCHAR2(30);
+    v_since_expr      VARCHAR2(100);
     v_until_col       VARCHAR2(30);
-    v_until_expr      VARCHAR2(30);
+    v_until_expr      VARCHAR2(100);
     c_until_nullable  CHAR(1);
-    v_src             VARCHAR2(5000);
+    v_src             VARCHAR2(32000);
     v_cmd             VARCHAR2(32000);
     v_act             VARCHAR2(5000);
     n_cnt             PLS_INTEGER;
@@ -403,7 +403,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         (
           SELECT t.COLUMN_VALUE column_name
           FROM TABLE(tab_v256(v_del_col, v_version_col, v_since_col, v_until_col)) t
-          WHERE t.COLUMN_VALUE IS NOT NULL
          UNION
           SELECT t.COLUMN_VALUE
           FROM TABLE(split_string(v_match_cols)) t
@@ -413,7 +412,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           FROM TABLE(split_string(REPLACE(UPPER(v_gen_cols), ' '))) t
         ) u
         LEFT JOIN tmp_all_columns ac
-          ON ac.column_name = u.column_name AND ac.side = 'TGT' 
+          ON ac.column_name = u.column_name AND ac.side = 'TGT'
+        WHERE u.column_name IS NOT NULL
       )
       LOOP
         IF r.exists_flag = 'N' THEN
@@ -464,22 +464,21 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     END;
     
   BEGIN
-    IF v_operation NOT IN ('INSERT', 'UPDATE', 'MERGE', 'REPLACE') THEN
-      Raise_Application_Error(-20000, 'Unsupported operation: '||v_operation);
-    END IF;
-    
-    xl.begin_action('Adding data to "'||p_target||'"', 'Operation: '||v_operation);
-    
-    v_sess_id := NVL(TO_CHAR(xl.get_current_proc_id), SYS_CONTEXT('USERENV','SESSIONID'));
-    ts_start := SYSTIMESTAMP;
-
     n_cnt := INSTR(p_operation, ' ');
     IF n_cnt = 0 THEN n_cnt := LENGTH(p_operation); END IF;
    
     v_operation := RTRIM(UPPER(SUBSTR(p_operation, 1, n_cnt)));
-   
     v_hint := SUBSTR(p_operation, n_cnt+1);
     
+    xl.begin_action('Adding data to "'||p_target||'"', 'Operation: '||v_operation);
+    
+    IF v_operation NOT IN ('INSERT', 'UPDATE', 'MERGE', 'REPLACE') THEN
+      Raise_Application_Error(-20000, 'Unsupported operation: '||v_operation);
+    END IF;
+    
+    v_sess_id := NVL(TO_CHAR(xl.get_current_proc_id), SYS_CONTEXT('USERENV','SESSIONID'));
+    ts_start := SYSTIMESTAMP;
+
     IF v_operation IN ('INSERT','REPLACE') THEN
       IF p_match_cols IS NOT NULL THEN
         Raise_Application_Error(-20000, 'To avoid confusion, please do not use P_MATCH_COLS parameter together with '||v_operation||' operation.');
