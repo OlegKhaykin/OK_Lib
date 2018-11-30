@@ -92,7 +92,7 @@ CREATE OR REPLACE PACKAGE pkg_etl_utils AS
     then your source view/query should have the column ETL$SRC_INDICATOR having value 1 
     when the source row exists and having some other value or being NULL otherwise.
     To achieve that, your source query/view should either OUTER JOIN your source to the target table
-    ou use FULL JOIN between the source and the target.
+    or use FULL JOIN between the source and the target.
     
   - P_VERSIONS defines versioning logic. The complete form is:
     <version column>; <from column>=<from expession>; <until column>=<until expression>  
