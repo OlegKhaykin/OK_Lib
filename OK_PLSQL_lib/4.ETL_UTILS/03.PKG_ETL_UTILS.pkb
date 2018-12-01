@@ -201,9 +201,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     v_gen_vals        VARCHAR2(1000);
     v_del_cond        VARCHAR2(250);
     v_del_col         VARCHAR2(30);
-    v_del_col_dtype   VARCHAR2(30);
     v_del_val         VARCHAR2(30);
-    v_active_val     VARCHAR2(30);
+    v_active_val      VARCHAR2(30);
     v_version_col     VARCHAR2(30);
     v_since_col       VARCHAR2(30);
     v_since_expr      VARCHAR2(100);
@@ -344,7 +343,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           FROM dual;
           xl.end_action(v_on_list);
           
-          xl.begin_action('Setting V_CHANGED_COND', 'Started', TRUE);
+          xl.begin_action('Setting V_CHANGED_COND', 'Started', FALSE);
           v_changed_cond := TRIM(UPPER(p_check_changed));
           CASE
             WHEN v_changed_cond = 'NONE' THEN v_changed_cond := NULL;
@@ -426,12 +425,6 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         SELECT nullable INTO c_until_nullable
         FROM tmp_all_columns
         WHERE side = 'TGT' AND column_name = v_until_col;
-      END IF;
-      
-      IF v_del_col IS NOT NULL THEN
-        SELECT data_type INTO v_del_col_dtype
-        FROM tmp_all_columns
-        WHERE side = 'TGT' AND column_name = v_del_col;
       END IF;
       
       COMMIT; -- to finish autonomous transaction before exiting this procedure
