@@ -3,7 +3,7 @@ prompt Creating package PKG_ETL_UTILS
 CREATE OR REPLACE PACKAGE pkg_etl_utils AS
 /*
   =================================================================================================
-  Package ETL_UTILS contains procedures for performing ETL operations.
+  Package PKG_ETL_UTILS contains procedures for performing ETL operations.
   There are two main procedures in this package: 1)ADD_DATA and 2)DELETE_DATA.
   Please, see their descriptions below.
 
