@@ -35,4 +35,4 @@ from dbg_performance_data pf
 group by pf.action
 order by sec desc;
 
-select * from tst_ok;
+select * from tst_ok where num>1;

@@ -41,7 +41,7 @@ CREATE TABLE dbg_performance_data
   proc_id                    SMALLINT UNSIGNED NOT NULL,
   action                     VARCHAR(128),
   cnt                        SMALLINT UNSIGNED NOT NULL,
-  seconds                    DECIMAL(16,5),
+  seconds                    DECIMAL(16,6),
   CONSTRAINT pk_perfdata PRIMARY KEY(proc_id, action), 
   CONSTRAINT fk_perfdata_proc FOREIGN KEY (proc_id) REFERENCES dbg_process_logs(proc_id) ON DELETE CASCADE
 ) ENGINE=MyISAM;
