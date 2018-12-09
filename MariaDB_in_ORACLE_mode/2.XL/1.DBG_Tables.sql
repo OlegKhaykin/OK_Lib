@@ -2,9 +2,6 @@ DROP SEQUENCE IF EXISTS seq_dbg_process_logs;
 DROP TABLE IF EXISTS dbg_log_data;
 DROP TABLE IF EXISTS dbg_performance_data;
 DROP TABLE IF EXISTS dbg_process_logs;
-DROP TABLE IF EXISTS tmp_dbg_action_stats;
-DROP TABLE IF EXISTS tmp_dbg_log_stack;
-
 
 CREATE SEQUENCE seq_dbg_process_logs NOCACHE;
 
