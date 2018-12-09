@@ -1,5 +1,4 @@
 SET sql_mode=ORACLE;
-
 DELIMITER //
 
 CREATE OR REPLACE PACKAGE xl AS
@@ -17,11 +16,8 @@ CREATE OR REPLACE PACKAGE xl AS
   PROCEDURE end_action(p_comment IN VARCHAR);
  
   PROCEDURE close_log(p_result IN VARCHAR, p_dump IN BOOLEAN);
-  
 END;
 //
 
-
 DELIMITER ;
-
 GRANT ALL ON xl TO everybody;
