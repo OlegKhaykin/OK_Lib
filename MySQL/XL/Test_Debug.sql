@@ -4,6 +4,8 @@ DELETE FROM dbg_process_logs;
 DELETE FROM dbg_log_data;
 DELETE FROM dbg_performance_data;
 
+commit;
+
 select * from dbg_process_logs order by proc_id desc;
 
 select q.*, timestampdiff(MICROSECOND, first_start_ts, last_end_ts) total_mcs
@@ -37,20 +39,5 @@ order by seconds desc;
 
 select action, SUM(cnt) cnt, AVG(seconds) sec
 from dbg_performance_data pf
-#where proc_id = 657
 group by pf.action
 order by sec desc;
-
-select * from tst_ok where num>1;
-
-CREATE TEMPORARY TABLE IF NOT EXISTS tmp_log_data
-(
-  idx             SMALLINT UNSIGNED NOT NULL,
-  tstamp          DATETIME(6) NOT NULL,
-  log_level       NUMERIC(2) NOT NULL,
-  action          VARCHAR(255) NOT NULL,
-  comment_txt     VARCHAR(21000),
-  CONSTRAINT pk_tmp_log_data PRIMARY KEY(idx)
-) ENGINE=MEMORY;
-
-commit;
