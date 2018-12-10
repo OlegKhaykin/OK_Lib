@@ -25,8 +25,7 @@ CREATE TABLE dbg_log_data
   tstamp                     DATETIME(6) NOT NULL,
   log_level                  DECIMAL(2) NOT NULL,
   action                     VARCHAR(255) NOT NULL,
-  comment_txt                VARCHAR(21000),
-  CONSTRAINT fk_logdata_proc FOREIGN KEY (proc_id) REFERENCES dbg_process_logs(proc_id) ON DELETE CASCADE
+  comment_txt                VARCHAR(21000)
 ) ENGINE=MyISAM;
 
 CREATE INDEX fki_dbg_log_data_procid ON dbg_log_data(proc_id);
@@ -39,8 +38,7 @@ CREATE TABLE dbg_performance_data
   action                     VARCHAR(128),
   cnt                        SMALLINT UNSIGNED NOT NULL,
   seconds                    DECIMAL(16,6),
-  CONSTRAINT pk_perfdata PRIMARY KEY(proc_id, action), 
-  CONSTRAINT fk_perfdata_proc FOREIGN KEY (proc_id) REFERENCES dbg_process_logs(proc_id) ON DELETE CASCADE
+  CONSTRAINT pk_perfdata PRIMARY KEY(proc_id, action)
 ) ENGINE=MyISAM;
  
 CREATE INDEX fki_dbg_perfdata_procid ON dbg_performance_data(proc_id);
