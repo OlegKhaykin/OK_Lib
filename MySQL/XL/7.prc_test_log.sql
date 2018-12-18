@@ -28,7 +28,7 @@ BEGIN
     CALL xl_end_action('Done');
   END FOR;
 
-  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Test error';
+  #SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Test error';
 
   CALL xl_close_log('Successfully completed', FALSE);
 END;
