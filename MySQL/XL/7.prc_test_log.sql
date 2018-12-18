@@ -20,8 +20,8 @@ BEGIN
   FOR n IN 1..9 DO
     CALL xl_begin_action(CONCAT('Calculating row #', n), 'Started', TRUE);
 
-    FOR m IN 1..100 DO
-      CALL xl_begin_action(CONCAT(n,'*',m,'='), '?', NULL);
+    FOR m IN 1..9 DO
+      CALL xl_begin_action('Calculating', CONCAT(n,'*',m,'='), NULL);
       CALL xl_end_action(n*m);
     END FOR;
 

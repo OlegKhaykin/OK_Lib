@@ -5,23 +5,9 @@ BEGIN
   IF p_persist THEN
     INSERT INTO dbg_log_data VALUES(@g_proc_id, p_tstamp, @g_log_level, p_action, p_comment);
   ELSE
-    SET @action = p_action;
-    SET @comment = p_comment;
-    SET @now = p_tstamp;
-    SET @g_log_idx = @g_log_idx + 1;
-
-    IF @g_log_idx <= 100 THEN
-      EXECUTE write_tmp_log_1 USING @g_log_idx, @now, @g_log_level, @action, @comment;
-      IF @g_log_idx = 100 THEN
-        EXECUTE truncate_tmp_log_2;
-      END IF;
-    ELSE
-      EXECUTE write_tmp_log_2 USING @g_log_idx, @now, @g_log_level, @action, @comment;
-      IF @g_log_idx = 200 THEN
-        EXECUTE truncate_tmp_log_1;
-        SET @g_log_idx = 0;
-      END IF;
-    END IF;
+    SET @g_log_idx = MOD(@g_log_idx, 100) + 1;
+    INSERT INTO tmp_log_data VALUES(@g_log_idx, p_tstamp, @g_log_level, p_action, p_comment)
+    ON DUPLICATE KEY UPDATE tstamp=p_tstamp, log_level=@g_log_level, action=p_action, comment_txt=p_comment;
   END IF;
 END;
 //

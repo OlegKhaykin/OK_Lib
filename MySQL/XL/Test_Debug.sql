@@ -8,13 +8,15 @@ commit;
 
 select * from dbg_process_logs order by proc_id desc;
 
-select q.*, timestampdiff(MICROSECOND, first_start_ts, last_end_ts) total_mcs
+select
+  q.*,
+  round(timestampdiff(MICROSECOND, first_start_ts, last_end_ts)/1000000,3) total_sec
 from
 (
   select
     sq.name, max(sq.proc_id) last_proc_id, count(1) cnt, sum(sq.dtl_cnt) log_cnt,
     min(sq.start_time) first_start_ts, max(sq.end_time) last_end_ts,
-    round(avg(sq.mcs)) avg_mcs
+    round(avg(sq.mcs)/1000000, 3) avg_sec
   from
   (
     select
@@ -30,8 +32,9 @@ from
 order by name;
 
 select * from dbg_log_data
-where proc_id = 300
-order by proc_id desc, tstamp;
+where proc_id = 1
+#and action = 'Calculating row #7'
+order by proc_id desc, tstamp desc;
 
 select * from dbg_performance_data
 where proc_id = 1

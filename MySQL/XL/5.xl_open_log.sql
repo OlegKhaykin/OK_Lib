@@ -12,7 +12,7 @@ BEGIN
     CREATE TEMPORARY TABLE IF NOT EXISTS tmp_action_stats
     (
       action          VARCHAR(255) NOT NULL,
-      tstamp          DATETIME(6),
+      last_start_dt   DATETIME(6),
       cnt             INT UNSIGNED,
       microseconds    INT,
       CONSTRAINT pk_tmp_action_stats PRIMARY KEY(action)
@@ -21,7 +21,7 @@ BEGIN
     CREATE TEMPORARY TABLE IF NOT EXISTS tmp_call_stack
     (
       call_level      TINYINT UNSIGNED NOT NULL,
-      module	        VARCHAR(255) NOT NULL,
+      module	      VARCHAR(255) NOT NULL,
       log_level       TINYINT UNSIGNED NOT NULL,
       CONSTRAINT pk_tmp_call_stack PRIMARY KEY(call_level)
     ) ENGINE=MEMORY;
@@ -35,31 +35,14 @@ BEGIN
       CONSTRAINT pk_tmp_log_stack PRIMARY KEY(log_level)
     ) ENGINE=MEMORY;
     
-    SET @tmp_log_table_1 = CONCAT('tmp_log_data_', @g_proc_id, '_1');
-    SET @tmp_log_table_2 = CONCAT('tmp_log_data_', @g_proc_id, '_2');
-    
-    FOR i IN 1..2 DO
-      SET @SQL = CONCAT('CREATE TEMPORARY TABLE IF NOT EXISTS tmp_log_data_', @g_proc_id, '_', i, '
-      (
-        idx             SMALLINT UNSIGNED NOT NULL PRIMARY KEY,
-        tstamp          DATETIME(6) NOT NULL,
-        log_level       NUMERIC(2) NOT NULL,
-        action          VARCHAR(255) NOT NULL,
-        comment_txt     VARCHAR(21000)
-      ) ENGINE=MEMORY';
-      PREPARE stmt FROM @SQL;
-      EXECUTE stmt;
-      DEALLOCATE PREPARE stmt;
-    END FOR;
-
-    SET @SQL = CONCAT('INSERT INTO ', @tmp_log_table_1, ' VALUES(?, ?, ?, ?, ?)';
-    PREPARE write_tmp_log_1 FROM @SQL;
-    SET @SQL = CONCAT('INSERT INTO ', @tmp_log_table_2, ' VALUES(?, ?, ?, ?, ?)';
-    PREPARE write_tmp_log_2 FROM @SQL;
-    SET @SQL = CONCAT('TRUNCATE TABLE ', @tmp_log_table_1);
-    PREPARE truncate_tmp_log_1 FROM @SQL;
-    SET @SQL = CONCAT('TRUNCATE TABLE ', @tmp_log_table_2);
-    PREPARE truncate_tmp_log_2 FROM @SQL;
+    CREATE TEMPORARY TABLE IF NOT EXISTS tmp_log_data
+    (
+      idx             SMALLINT UNSIGNED NOT NULL PRIMARY KEY,
+      tstamp          DATETIME(6) NOT NULL,
+      log_level       NUMERIC(2) NOT NULL,
+      action          VARCHAR(255) NOT NULL,
+      comment_txt     VARCHAR(21000)
+    ) ENGINE=MEMORY;
 
     INSERT INTO dbg_process_logs(proc_id, name, comment_txt) VALUES(@g_proc_id, p_name, p_comment);
   END IF;

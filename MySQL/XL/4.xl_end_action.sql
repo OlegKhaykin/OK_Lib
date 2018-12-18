@@ -8,11 +8,11 @@ BEGIN
   
   IF @g_proc_id IS NOT NULL THEN
     SET dt_now = NOW(6);
-    
+
     SELECT * INTO r_log_stack FROM tmp_log_stack WHERE log_level = @g_log_level;
     
     SET n_ms = TIMESTAMPDIFF(MICROSECOND, r_log_stack.tstamp, dt_now);
-    UPDATE tmp_action_stats SET cnt = cnt+1, microseconds = microseconds + n_ms, tstamp = NULL
+    UPDATE tmp_action_stats SET cnt = cnt+1, microseconds = microseconds + n_ms, last_start_dt = NULL
     WHERE action = r_log_stack.action;
     
     CALL xl_write_log(r_log_stack.action, p_comment, r_log_stack.debug, dt_now);

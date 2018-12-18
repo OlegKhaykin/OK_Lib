@@ -16,22 +16,10 @@ BEGIN
     IF @g_call_level = 0 THEN -- if this is the end of the main process
       IF p_dump THEN -- if request received to dump debugging information accumulated in memory (usually from an exception handler):
         -- Save log data accumulated in memory:
-        FOR i IN 1..2 DO
-          SET @SQL = CONCAT
-          (
-            'INSERT INTO dbg_log_data SELECT ?, tstamp, log_level, action, comment_txt FROM ', 
-            CASE i WHEN 1 THEN @tmp_log_table_1 ELSE @tmp_log_table_2 END
-          );
-          PREPARE stmt FROM @SQL;
-          EXECUTE stmt USING @g_proc_id;
-          DEALLOCATE PREPARE stmt;
-          
-          SET @SQL = CONCAT('DROP TABLE IF EXISTS ', CASE i WHEN 1 THEN @tmp_log_table_1 ELSE @tmp_log_table_2 END);
-          PREPARE stmt FROM @SQL;
-          EXECUTE stmt;
-          DEALLOCATE PREPARE stmt;
-        END FOR;
-      END IF;
+        INSERT INTO dbg_log_data
+        SELECT @g_proc_id, tstamp, log_level, action, comment_txt 
+        FROM tmp_log_data;
+      END IF;         
     
       -- Save performance statistics accumulated in memory:
       INSERT INTO dbg_performance_data(proc_id, action, cnt, seconds)
@@ -41,9 +29,7 @@ BEGIN
       DROP TABLE IF EXISTS tmp_action_stats;
       DROP TABLE IF EXISTS tmp_log_stack;
       DROP TABLE IF EXISTS tmp_call_stack;
-      
-      DEALLOCATE PREPARE write_tmp_log_1;
-      DEALLOCATE PREPARE write_tmp_log_2;
+      DROP TABLE IF EXISTS tmp_log_data;
       
       UPDATE dbg_process_logs SET end_time = NOW(6), result = p_result
       WHERE proc_id = @g_proc_id;

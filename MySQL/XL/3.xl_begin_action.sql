@@ -10,18 +10,19 @@ BEGIN
     SET dt_now = NOW(6);
     SET b_persist = CASE WHEN p_debug OR p_debug IS NULL AND @b_debug THEN TRUE ELSE FALSE END;
     
-    SELECT MAX(tstamp) INTO dt_recent FROM tmp_action_stats WHERE action = p_action;
+    SELECT MAX(last_start_dt) INTO dt_recent FROM tmp_action_stats WHERE action = p_action;
     IF dt_recent IS NOT NULL THEN
       SET @errmsg = CONCAT('Action "', p_action, '" is already running. You cannot start it again! This is a bug!');
       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = @errmsg;
     END IF;
     
     INSERT INTO tmp_action_stats VALUES(p_action, dt_now, 0, 0)
-    ON DUPLICATE KEY UPDATE tstamp = dt_now;
+    ON DUPLICATE KEY UPDATE last_start_dt = dt_now;
+
     
     SET @g_log_level = @g_log_level+1;
     INSERT INTO tmp_log_stack VALUES(@g_log_level, p_action, dt_now, b_persist)
-    ON DUPLICATE KEY UPDATE action = p_action, debug = b_persist;
+    ON DUPLICATE KEY UPDATE action = p_action, tstamp=dt_now, debug = b_persist;
     
     CALL xl_write_log(p_action, p_comment, b_persist, dt_now);
   END IF;
