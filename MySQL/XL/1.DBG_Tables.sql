@@ -1,16 +1,15 @@
-DROP SEQUENCE IF EXISTS seq_dbg_process_logs;
+USE OK;
+
 DROP TABLE IF EXISTS dbg_log_data;
 DROP TABLE IF EXISTS dbg_performance_data;
 DROP TABLE IF EXISTS dbg_process_logs;
 
-CREATE SEQUENCE seq_dbg_process_logs NOCACHE;
-
 CREATE TABLE dbg_process_logs
 (
-  proc_id     SMALLINT UNSIGNED NOT NULL,
+  proc_id     SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
   name        VARCHAR(100) NOT NULL,
   comment_txt VARCHAR(1000),
-  start_time  DATETIME(6) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  start_time  DATETIME(6) DEFAULT NOW(6) NOT NULL,
   end_time    DATETIME(6) NULL,
   result      VARCHAR(2048),
   CONSTRAINT pk_dbg_process_logs PRIMARY KEY(proc_id)

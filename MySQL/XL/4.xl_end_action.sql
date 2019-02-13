@@ -1,21 +1,28 @@
+DROP PROCEDURE IF EXISTS xl_end_action;
+
 DELIMITER //
 
-CREATE OR REPLACE PROCEDURE xl_end_action(IN p_comment VARCHAR(21000))
+CREATE PROCEDURE xl_end_action(IN p_comment VARCHAR(21000))
 BEGIN
-  DECLARE r_log_stack   ROW(log_level TINYINT UNSIGNED, action VARCHAR(255), tstamp DATETIME(6), debug BOOLEAN);
   DECLARE dt_now        DATETIME(6);
+  DECLARE v_action 		VARCHAR(255);
+  DECLARE dt_begin	 	DATETIME(6);
+  DECLARE b_debug 		BOOLEAN;
   DECLARE n_ms          INT UNSIGNED;
   
   IF @g_proc_id IS NOT NULL THEN
-    SET dt_now = NOW(6);
-
-    SELECT * INTO r_log_stack FROM tmp_log_stack WHERE log_level = @g_log_level;
+    SELECT NOW(6), action, tstamp, debug
+    INTO dt_now, v_action, dt_begin, b_debug 
+    FROM tmp_log_stack
+    WHERE log_level = @g_log_level;
     
-    SET n_ms = TIMESTAMPDIFF(MICROSECOND, r_log_stack.tstamp, dt_now);
-    UPDATE tmp_action_stats SET cnt = cnt+1, microseconds = microseconds + n_ms, last_start_dt = NULL
-    WHERE action = r_log_stack.action;
+    UPDATE tmp_action_stats SET
+      cnt = cnt+1, 
+      microseconds = microseconds + TIMESTAMPDIFF(MICROSECOND, dt_begin, dt_now),
+      last_start_dt = NULL
+    WHERE action = v_action;
     
-    CALL xl_write_log(r_log_stack.action, p_comment, r_log_stack.debug, dt_now);
+    CALL xl_write_log(v_action, p_comment, b_debug, dt_now);
     
     SET @g_log_level = @g_log_level-1; -- go up by the log stack
   END IF;

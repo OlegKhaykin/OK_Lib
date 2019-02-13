@@ -1,13 +1,18 @@
+DROP PROCEDURE IF EXISTS xl_close_log;
+
 DELIMITER //
 
-CREATE OR REPLACE PROCEDURE xl_close_log(IN p_result VARCHAR(2048), IN p_dump BOOLEAN)
+CREATE PROCEDURE xl_close_log(IN p_result VARCHAR(2048), IN p_dump BOOLEAN)
 BEGIN
-  DECLARE r_call_stack ROW(call_level TINYINT UNSIGNED, module VARCHAR(255), log_level TINYINT UNSIGNED);
+  DECLARE n_log_level	TINYINT UNSIGNED; 
+  DECLARE v_module 		VARCHAR(255);
 
   IF @g_proc_id IS NOT NULL THEN -- if logging has been started in this session:
-    SELECT * INTO r_call_stack FROM tmp_call_stack WHERE call_level = @g_call_level;
+    SELECT module, log_level INTO v_module, n_log_level
+    FROM tmp_call_stack
+    WHERE call_level = @g_call_level;
     
-    WHILE @g_log_level > r_call_stack.log_level DO
+    WHILE @g_log_level > n_log_level DO
       CALL xl_end_action(p_result);
     END WHILE;
      

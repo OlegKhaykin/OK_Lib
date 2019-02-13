@@ -1,7 +1,12 @@
+DROP PROCEDURE IF EXISTS prc_test_log;
+
 DELIMITER //
 
-CREATE OR REPLACE PROCEDURE prc_test_log(IN p_test_num SMALLINT, IN p_debug BIT(1))
+CREATE PROCEDURE prc_test_log(IN p_test_num SMALLINT, IN p_debug BIT(1))
 BEGIN
+  DECLARE n SMALLINT UNSIGNED;
+  DECLARE m SMALLINT UNSIGNED;
+  
   DECLARE EXIT HANDLER FOR SQLEXCEPTION
   BEGIN
     GET DIAGNOSTICS CONDITION 1 @errmsg = MESSAGE_TEXT;
@@ -17,16 +22,18 @@ BEGIN
     CASE p_debug WHEN 1 THEN TRUE ELSE FALSE END
   );
   
-  FOR n IN 1..9 DO
+  SET n = 1;
+  WHILE n <= 10 DO
     CALL xl_begin_action(CONCAT('Calculating row #', n), 'Started', TRUE);
-
-    FOR m IN 1..9 DO
+    
+    SET m = 1;
+    WHILE m <= 100 DO
       CALL xl_begin_action('Calculating', CONCAT(n,'*',m,'='), NULL);
       CALL xl_end_action(n*m);
-    END FOR;
+    END WHILE;
 
     CALL xl_end_action('Done');
-  END FOR;
+  END WHILE;
 
   #SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Test error';
 

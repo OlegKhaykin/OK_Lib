@@ -1,6 +1,8 @@
+DROP PROCEDURE IF EXISTS xl_write_log;
+
 DELIMITER //
 
-CREATE OR REPLACE PROCEDURE xl_write_log(IN p_action VARCHAR(255), IN p_comment VARCHAR(21000), IN p_persist BOOLEAN, IN p_tstamp DATETIME(6))
+CREATE PROCEDURE xl_write_log(IN p_action VARCHAR(255), IN p_comment VARCHAR(21000), IN p_persist BOOLEAN, IN p_tstamp DATETIME(6))
 BEGIN
   IF p_persist THEN
     INSERT INTO dbg_log_data VALUES(@g_proc_id, p_tstamp, @g_log_level, p_action, p_comment);

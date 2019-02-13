@@ -1,6 +1,8 @@
+DROP PROCEDURE IF EXISTS xl_open_log;
+
 DELIMITER //
 
-CREATE OR REPLACE PROCEDURE xl_open_log(IN p_name VARCHAR(255), IN p_comment VARCHAR(1000), IN p_debug BOOLEAN)
+CREATE PROCEDURE xl_open_log(IN p_name VARCHAR(255), IN p_comment VARCHAR(1000), IN p_debug BOOLEAN)
 BEGIN
   IF @g_proc_id IS NULL THEN
     SET @g_proc_id  = NEXTVAL(seq_dbg_process_logs);

@@ -1,6 +1,8 @@
+DROP PROCEDURE IF EXISTS xl_begin_action;
+
 DELIMITER //
 
-CREATE OR REPLACE PROCEDURE xl_begin_action(IN p_action VARCHAR(255), IN p_comment VARCHAR(21000), IN p_debug BOOLEAN) 
+CREATE PROCEDURE xl_begin_action(IN p_action VARCHAR(255), IN p_comment VARCHAR(21000), IN p_debug BOOLEAN) 
 BEGIN
   DECLARE b_persist BOOLEAN;
   DECLARE dt_recent DATETIME(6);
