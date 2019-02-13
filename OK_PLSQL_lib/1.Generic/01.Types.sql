@@ -18,15 +18,12 @@ CREATE TYPE obj_name_value AS OBJECT
   value VARCHAR2(256)
 );
 /
-CREATE OR REPLACE PUBLIC SYNONYM obj_name_value FOR obj_name_value;
 GRANT EXECUTE ON obj_name_value TO PUBLIC;
 
 CREATE TYPE tab_name_values AS TABLE OF obj_name_value;
 /
-CREATE OR REPLACE PUBLIC SYNONYM tab_name_values FOR tab_name_values;
 GRANT EXECUTE ON tab_name_values TO PUBLIC;
 
 CREATE OR REPLACE TYPE tab_v256 AS TABLE OF VARCHAR2(256);
 /
-CREATE OR REPLACE PUBLIC SYNONYM tab_v256 FOR tab_v256;
 GRANT EXECUTE ON tab_v256 TO PUBLIC;
