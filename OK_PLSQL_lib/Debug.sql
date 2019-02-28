@@ -30,7 +30,7 @@ from
 order by proc_id desc;
 
 select * from dbg_log_data
-where proc_id IN (815)
+where proc_id IN (875)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
 order by tstamp desc;
@@ -39,3 +39,4 @@ select proc_id, action, cnt, seconds
 from dbg_performance_data 
 where proc_id = 479
 order by seconds desc;
+

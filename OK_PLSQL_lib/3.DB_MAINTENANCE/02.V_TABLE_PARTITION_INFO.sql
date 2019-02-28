@@ -23,4 +23,3 @@ CROSS JOIN TABLE(pkg_db_maintenance.get_partition_info(t.owner, t.table_name)) t
 LEFT JOIN TABLE(pkg_db_maintenance.get_subpartition_info(t.owner, t.table_name)) tsp ON tsp.partition_name = tp.partition_name;
 
 GRANT SELECT ON v_table_partition_info TO PUBLIC;
-CREATE OR REPLACE PUBLIC SYNONYM v_table_partition_info FOR v_table_partition_info;
