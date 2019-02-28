@@ -21,5 +21,3 @@ END;
 /
 
 GRANT EXECUTE ON concat_v2_set TO PUBLIC;
-
-CREATE OR REPLACE PUBLIC SYNONYM concat_v2_set FOR concat_v2_set; 

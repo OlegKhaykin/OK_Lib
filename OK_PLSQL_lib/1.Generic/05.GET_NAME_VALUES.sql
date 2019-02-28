@@ -22,5 +22,4 @@ END;
 /
 
 GRANT EXECUTE ON get_name_values TO PUBLIC;
-CREATE OR REPLACE PUBLIC SYNONYM get_name_values FOR get_name_values;
  

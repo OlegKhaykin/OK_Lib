@@ -7,4 +7,3 @@ END;
 /
  
 GRANT EXECUTE ON eval_date TO PUBLIC;
-CREATE OR REPLACE PUBLIC SYNONYM eval_date FOR eval_date;

@@ -9,5 +9,3 @@ FROM all_indexes i
 WHERE index_type = 'NORMAL';
 
 GRANT SELECT ON v_all_indexes TO PUBLIC;
-
-CREATE OR REPLACE PUBLIC SYNONYM v_all_indexes FOR v_all_indexes;

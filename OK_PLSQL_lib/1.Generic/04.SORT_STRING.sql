@@ -19,5 +19,3 @@ END;
 /
 
 GRANT EXECUTE ON sort_string TO PUBLIC;
-
-CREATE OR REPLACE PUBLIC SYNONYM sort_string FOR sort_string;

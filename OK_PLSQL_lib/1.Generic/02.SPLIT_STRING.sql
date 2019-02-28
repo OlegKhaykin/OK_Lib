@@ -10,5 +10,3 @@ END;
 /
 
 GRANT EXECUTE ON split_string TO PUBLIC;
-
-CREATE OR REPLACE PUBLIC SYNONYM split_string FOR split_string;

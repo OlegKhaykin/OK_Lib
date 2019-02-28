@@ -12,5 +12,3 @@ END;
 /
 
 GRANT EXECUTE ON str_to_number TO PUBLIC;
-
-CREATE OR REPLACE PUBLIC SYNONYM str_to_number FOR str_to_number; 

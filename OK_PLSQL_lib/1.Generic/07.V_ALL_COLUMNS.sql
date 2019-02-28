@@ -13,4 +13,3 @@ SELECT
 FROM all_tab_columns;
 
 GRANT SELECT ON v_all_columns TO PUBLIC;
-CREATE OR REPLACE PUBLIC SYNONYM v_all_columns FOR v_all_columns;

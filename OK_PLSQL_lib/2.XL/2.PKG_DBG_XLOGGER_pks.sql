@@ -1,5 +1,3 @@
-prompt Creating package PKG_DBG_XLOGGER
- 
 CREATE OR REPLACE PACKAGE pkg_dbg_xlogger AS
 /*
   This package is for debugging and performance tuning

@@ -1,5 +1,3 @@
-prompt Creating package PKG_DATA_REFRESH
-
 CREATE OR REPLACE PACKAGE pkg_data_refresh AS
 /*
  =============================================================================

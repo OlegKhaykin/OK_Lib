@@ -1,5 +1,3 @@
-prompt Creating sequence SEQ_DBG_XLOGGER and 4 DBG_* tables
- 
 begin
   for r in
   (

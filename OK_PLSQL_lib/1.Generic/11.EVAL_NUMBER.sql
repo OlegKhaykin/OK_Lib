@@ -5,6 +5,6 @@ BEGIN
   RETURN ret;
 END;
 /
+
 GRANT EXECUTE ON eval_number TO PUBLIC;
-CREATE OR REPLACE PUBLIC SYNONYM eval_number FOR eval_number;
  
