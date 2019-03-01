@@ -1,3 +1,4 @@
+In PKG_ETL_UTILS:
 MERGE  INTO OK.TST_OK t 
 USING 
 (
@@ -31,3 +32,9 @@ VALUES
 )
 WHERE 1=1
 AND NOT (s.etl$src_indicator IS NULL);
+
+In PKG_DATA_REFRESH:
+Line 181 - missing ";"
+generate -> p_generate
+Gather error stats for DRF process
+SIGNAL -> STOP
