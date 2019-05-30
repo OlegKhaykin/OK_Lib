@@ -5,6 +5,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   -----------------------------------------------------------------------------
   History of changes - newest to oldest:
  
+  10-Apr-2019, OK: used CLOB as P_COMMENT data type;
   10-Nov-2015, OK: new version;
 */
   TYPE stats_record IS RECORD
@@ -46,7 +47,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   PROCEDURE open_log
   (
     p_name IN VARCHAR2,
-    p_comment IN VARCHAR2 DEFAULT NULL,
+    p_comment IN CLOB DEFAULT NULL,
     p_debug IN BOOLEAN DEFAULT FALSE
   ) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
@@ -92,7 +93,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   PROCEDURE write_log
   (
     p_action    IN VARCHAR2, 
-    p_comment   IN VARCHAR2 DEFAULT NULL, 
+    p_comment   IN CLOB DEFAULT NULL, 
     p_persist   IN BOOLEAN
   ) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
@@ -120,7 +121,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   PROCEDURE begin_action
   (
     p_action    IN VARCHAR2, 
-    p_comment   IN VARCHAR2 DEFAULT 'Started', 
+    p_comment   IN CLOB DEFAULT 'Started', 
     p_debug     IN BOOLEAN DEFAULT NULL
   ) IS
     stk   action_stack_record;

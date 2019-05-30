@@ -175,9 +175,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_data_refresh AS
            'etl.add_data(p_operation=>'''||r.operation||''', p_target=>'''||r.tgt ||
            ''', p_source=>q''['||r.src||']'', p_where=>q''['||r.whr ||
            ']'', p_hint=>'''||r.hint||''', p_match_cols=>'''||r.match_cols ||
-           ''', p_check_changed=>'''||r.check_changed||''', generate=>q''['||r.generate ||
+           ''', p_check_changed=>'''||r.check_changed||''', p_generate=>q''['||r.generate ||
            ']'', p_delete=>q''['||r.del||']'', p_versions=>q''['||r.versions ||
-           ']'', p_commit_at=>'||r.commit_at||', p_errtab=>'''||r.err_table||''')'
+           ']'', p_commit_at=>'||r.commit_at||', p_errtab=>'''||r.err_table||''');'
           END || ' END;';
         END IF;
         

@@ -4,7 +4,8 @@ CREATE OR REPLACE PACKAGE pkg_dbg_xlogger AS
  
   History of changes (newest to oldest):
   --------------------------------------------------------------------------------
-  10-Nov-2015, OK: new version
+  10-Apr-2019, OK: used CLOB as P_COMMENT data type;
+  10-Nov-2015, OK: new version;
 */
   g_proc_id     dbg_process_logs.proc_id%TYPE;
 
@@ -15,11 +16,11 @@ CREATE OR REPLACE PACKAGE pkg_dbg_xlogger AS
   PROCEDURE begin_action
   (
     p_action    IN VARCHAR2, 
-    p_comment   IN VARCHAR2 DEFAULT 'Started',
+    p_comment   IN CLOB DEFAULT 'Started',
     p_debug     IN BOOLEAN DEFAULT NULL
   );
  
-  PROCEDURE end_action(p_comment IN VARCHAR2 DEFAULT 'Completed');
+  PROCEDURE end_action(p_comment IN CLOB DEFAULT 'Completed');
  
   PROCEDURE close_log(p_result IN VARCHAR2 DEFAULT NULL, p_dump IN BOOLEAN DEFAULT FALSE);
   

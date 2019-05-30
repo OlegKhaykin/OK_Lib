@@ -468,7 +468,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
   BEGIN
     xl.begin_action
     (
-      'ADD_DATA', 
+      $$PLSQL_UNIT||'.ADD_DATA', 
       RTRIM
       (
         list_param('P_OPERATION', p_operation) ||
