@@ -1,3 +1,15 @@
+-- Locks:
+SELECT
+  s. inst_id, s.sid, s.serial#,
+  s.osuser, s.username, s.machine, s.program,
+  o.owner ||'.'|| o.object_name locked_object,
+  Decode(lo.locked_mode, 0,'None', 1,'Null', 2,'Row-S', 3,'Row-X', 4,'Share', 5,'S/Row-X', 6,'Exclusive') as lock_mode
+FROM v$locked_object              lo
+JOIN dba_objects                  o
+  ON lo.object_id = o.object_id
+JOIN gv$session                   s
+  ON s.sid = lo.session_id AND s.inst_id = lo.inst_id;
+
 -- Blocking locks:
 SELECT
   o.owner||'.'||o.object_name||' ('||o.object_type|| ')' object,

@@ -73,3 +73,33 @@ with
 --select * from stats order by audsid;
 select * from events order by audsid;
 select * from hist where rnk=1 order by audsid;
+
+-- ===========================  SQL execution statistics  ==============================
+-- For each SQL statement currently in SGA:
+select * from v$sqlarea;
+-- For each plan:
+select * from v$sqlarea_plan_hash;
+-- For each step of the plan:
+select * from v$sql_plan_statistics;
+-- For each child cursor:
+select * from v$sql; 
+-- For each execution (SQL_ID + SQL_EXEC_START or SQL_EXEC_ID):
+select * v$sql_monitor;
+
+--================================= Execution plans ====================================
+-- For the last EXPLAIN PLAN:
+select plan_table_output from table(dbms_xplan.display);
+
+-- For the cursor that is still in SGA:
+select * from table
+(
+  dbms_xplan.display_cursor
+  (
+    sql_id = '...', 
+    --cursor_child_no => 0,
+    format=ALL
+  )
+);
+
+-- Plan captured in AWR:
+select * from table(dbms_xplan.dosplay_awr('...'));
