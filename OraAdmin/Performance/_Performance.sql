@@ -14,8 +14,8 @@ with
     join gv$process p on p.inst_id = s.inst_id and p.addr = s.paddr
     join gv$sqltext sqlt on sqlt.inst_id = s.inst_id and sqlt.sql_id = s.sql_id and sqlt.piece = 0
     where s.status = 'ACTIVE'
-    and s.audsid <> sys_context('userenv','sessionid')
-    and s.osuser = 'khayole'
+--    and s.audsid <> sys_context('userenv','sessionid')
+--    and s.osuser = 'khayole'
   ),
   longops as
   (
@@ -67,7 +67,7 @@ with
     join gv$active_session_history ash
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
---select * from sess  order by audsid;
+select * from sess  order by audsid;
 --select * from waits order by audsid;
 --select * from longops order by audsid;
 --select * from stats order by audsid;
