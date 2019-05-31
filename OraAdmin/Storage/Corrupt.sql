@@ -1,4 +1,4 @@
---###### SYS #############################################################
+--###### As SYS #############################################################
 begin
   dbms_repair.admin_tables(table_type=>dbms_repair.repair_table, action=>dbms_repair.create_action);
   dbms_repair.admin_tables(table_type=>dbms_repair.orphan_table, action=>dbms_repair.create_action);
@@ -29,12 +29,11 @@ create index ids_segment_type on my_extents(segment_type);
 
 create or replace view vw_corrupt_segments as
 select distinct owner, segment_type, segment_name
-from 
-  v$database_block_corruption c,
-  my_extents e
-where e.file_id = c.file#
-and e.block_id <= c.block# + c.blocks - 1 and e.block_id + e.blocks - 1 >= c.block#
-and e.segment_type in ('TABLE', 'TABLE PARTITION','INDEX','INDEX PARTITION','CLUSTER');
+from gv$database_block_corruption    c
+join my_extents e
+  on e.file_id = c.file#
+ and e.block_id <= c.block# + c.blocks - 1 and e.block_id + e.blocks - 1 >= c.block#
+ and e.segment_type in ('TABLE', 'TABLE PARTITION','INDEX','INDEX PARTITION','CLUSTER');
 
 create or replace package pkg_admin as
   procedure get_tablespace_extents(p_tablespace_name in varchar2);
@@ -57,10 +56,8 @@ create or replace package body pkg_admin as
   end;
 
   procedure get_tablespace_extents(p_tablespace_name in varchar2) is
-    action VARCHAR2(128);
   begin
-    action := 'Getting extents for tablespace '||p_tablespace_name;
-    xl.write(action,'Started');
+    xl.begin_action('Getting extents for tablespace '||p_tablespace_name);
     for r in
     (
       select owner, segment_name, partition_name, file_id, block_id, blocks, tablespace_name, segment_type
@@ -71,53 +68,38 @@ create or replace package body pkg_admin as
       values(r.file_id, r.block_id, r.blocks, r.owner, r.segment_name, r.partition_name, r.tablespace_name, r.segment_type);
     end loop;
     commit;
-    xl.write(action,'Done');
+    xl.end_action;
   end;
   
   procedure get_possibly_corrupt_extents is
-    action varchar2(128);
   begin
-    action := 'Truncating table MY_EXTENTS';
-    xl.write(action,'Started');
-    execute immediate 'truncate table my_extents';
-    xl.write(action,'Done');
-    
-    action := 'Getting extents from suspicious tablespaces';
-    xl.write(action,'Started');
+    xl.begin_action('Getting extents from suspicious tablespaces');
     for r in 
     (
       select distinct f.tablespace_name
-      from 
-        v$database_block_corruption c,
-        dba_data_files f
-      where f.file_id = c.file#
+      from gv$database_block_corruption     c
+      join dba_data_files                   f
+        on f.file_id = c.file#
     )
     loop
       get_tablespace_extents(r.tablespace_name);
     end loop;
-    xl.write(action,'Done');
+    xl.end_action;
   end;
 
   procedure get_corruption_details is
     cnt   pls_integer;
-    act   varchar2(128);
   begin
-    xl.open('Corruption check', true);
+    xl.open('CHK_CORRUPT', 'Corruption check', true);
     
-    act := 'Cleaning tables REPAIR_TABLE and ORPHAN_KEY_TABLE';
-    xl.write(act, 'Started');
     delete from repair_table;
     delete from orphan_key_table;
-    xl.write(act, 'Done');
     
-    act := 'Finding segments that may be corrupt';
-    xl.write(act, 'Started');
     get_possibly_corrupt_extents;
-    xl.write(act, 'Done');
     
-    for r in (select * from vw_corrupt_segments) loop
-      act := 'Checking '||r.segment_type||' '||r.owner||'.'||r.segment_name;
-      xl.write(act, 'Started');
+    for r in (select * from vw_corrupt_segments) 
+    loop
+      xl.begin_actin('Checking '||r.segment_type||' '||r.owner||'.'||r.segment_name);
       dbms_repair.check_object
       (
         schema_name=>r.owner, 
@@ -125,42 +107,40 @@ create or replace package body pkg_admin as
         object_name=>r.segment_name, 
         corrupt_count=>cnt
       );
-      xl.write(act, cnt || ' corrupt blocks found');
+      xl.end_action, cnt || ' corrupt blocks found');
       
-      act := 'Dumping '||r.owner||'.'||r.segment_name||'entries that reference corrupt blocks';
-      xl.write(act, 'Started');
+      xl.begin_action('Dumping '||r.owner||'.'||r.segment_name||'entries that reference corrupt blocks');
       if r.segment_type like 'INDEX%' then
         dbms_repair.dump_orphan_keys(r.owner, r.segment_name, key_count=>cnt);
       end if;
-      xl.write(act, cnt || ' keys dumped');
+      xl.end_action, cnt || ' keys dumped');
     end loop;
     
     xl.close('Successfully completed');
   exception
    when others then
-    xl.close(sqlerrm);
+    xl.close(sqlerrm, true);
+    raise;
   end;
   
   procedure fix_corrupt_blocks is
-    cnt     pls_integer;
-    act     varchar2(128);
   begin
-    xl.open('Fixing corrupt blocks', true);
+    xl.open('OK_FIX_CORRUPT', 'Fixing corrupt blocks', true);
     for r in (select * from vw_corrupt_segments) loop
-      act := 'Fixing '||r.segment_type||' '||r.owner||'.'||r.segment_name;
-      xl.write(act, 'Started');
+      xl.begin_action('Fixing '||r.segment_type||' '||r.owner||'.'||r.segment_name);
       dbms_repair.fix_corrupt_blocks
       (
         schema_name=>r.owner,
         object_type=>get_segment_type_id(r.segment_type),
         object_name=>r.segment_name, fix_count=>cnt
       );
-      xl.write(act, 'Blocks fixed: '||cnt);
+      xl.ed_action('Blocks fixed: '||cnt);
     end loop;
     xl.close('Successfully completed');
   exception
    when others then
-    xl.close(sqlerrm);
+    xl.close(sqlerrm, true);
+    raise;
   end;
 end;
 /
