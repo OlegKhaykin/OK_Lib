@@ -39,7 +39,20 @@ select
   tablespace_name, segment_name, segment_type, round(bytes/1024/1024) mbytes
 --  round(sum(bytes)/1024/1024) mbytes
 from dba_segments
-where tablespace_name = 'FUSION_DATA_RAW'
-order by tablespace_name, segment_name
+where 1=1
+and segment_name like 'TST_OK%'
+--and tablespace_name = 'FUSION_DATA_RAW'
+order by mbytes,
+tablespace_name, segment_name
 --order by mbytes desc
 ;
+
+select tablespace_name, segment_name, segment_type, round(sum(bytes)/1024/1024) mbytes
+from dba_segments
+where owner = 'ODS'
+group by tablespace_name, segment_name, segment_type
+order by mbytes desc
+;
+
+-- TEMP space:
+SELECT * FROM dba_temp_files;

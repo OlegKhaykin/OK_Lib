@@ -13,15 +13,18 @@ with
     from gv$session s
     join gv$process p on p.inst_id = s.inst_id and p.addr = s.paddr
     join gv$sqltext sqlt on sqlt.inst_id = s.inst_id and sqlt.sql_id = s.sql_id and sqlt.piece = 0
-    where s.status = 'ACTIVE'
---    and s.audsid <> sys_context('userenv','sessionid')
---    and s.osuser = 'khayole'
+    where 1=1
+    and s.status = 'ACTIVE'
+    and s.audsid <> sys_context('userenv','sessionid')
+    and s.osuser = 'N384433'
+    and upper(s.program) ='SQLPLUS.EXE'
   ),
   longops as
   (
     select
       s.audsid, s.sql_text,
-      lo.*
+      lo.elapsed_seconds, lo.time_remaining, lo.message,
+      lo.sql_id, lo.sql_exec_id
     from sess s
     join gv$session_longops lo
       on lo.inst_id = s.inst_id and lo.sid = s.sid and lo.serial# = s.serial#
@@ -67,24 +70,30 @@ with
     join gv$active_session_history ash
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
-select * from sess  order by audsid;
+--select * from sess  order by audsid, sid;
 --select * from waits order by audsid;
---select * from longops order by audsid;
+select * from longops order by audsid, time_remaining desc;
 --select * from stats order by audsid;
 select * from events order by audsid;
 select * from hist where rnk=1 order by audsid;
 
+select * from table(dbms_xplan.display_cursor(sql_id => 'd8u0wugv38d4t', format => 'ALL'));
+
 -- ===========================  SQL execution statistics  ==============================
 -- For each SQL statement currently in SGA:
 select * from v$sqlarea;
+
 -- For each plan:
 select * from v$sqlarea_plan_hash;
+
 -- For each step of the plan:
 select * from v$sql_plan_statistics;
+
 -- For each child cursor:
-select * from v$sql; 
+select * from v$sql_cursor;
+
 -- For each execution (SQL_ID + SQL_EXEC_START or SQL_EXEC_ID):
-select * v$sql_monitor;
+select * from v$sql_monitor;
 
 --================================= Execution plans ====================================
 -- For the last EXPLAIN PLAN:
@@ -95,11 +104,12 @@ select * from table
 (
   dbms_xplan.display_cursor
   (
-    sql_id = '...', 
-    --cursor_child_no => 0,
-    format=ALL
+    sql_id =>
+      '116vhat5ajczc', -- PROC_ID=8
+    cursor_child_no => 0,
+    format => 'ALL'
   )
 );
 
 -- Plan captured in AWR:
-select * from table(dbms_xplan.dosplay_awr('...'));
+select * from table(dbms_xplan.display_awr('...'));

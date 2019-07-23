@@ -153,7 +153,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   END;
  
   
-  PROCEDURE end_action(p_comment IN VARCHAR2 DEFAULT 'Completed') IS
+  PROCEDURE end_action(p_comment IN CLOB DEFAULT 'Completed') IS
     stk   action_stack_record;
   BEGIN
     IF g_proc_id IS NOT NULL THEN
