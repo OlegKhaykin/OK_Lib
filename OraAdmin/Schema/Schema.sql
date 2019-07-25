@@ -16,9 +16,9 @@ from dba_tables t
 join dba_segments s on s.owner = t.owner and s.segment_name = t.table_name
 where 1=1
 and t.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
---and t.table_name in ('PERSON', 'MEMBER', 'AHMMRNBUSINESSSUPPLIER', 'MEMBERAGGREGATION', 'CAREENGINEMEMBERPROCESSSTATUS','TST_OK_BUSINESS_SUPPLIER')
+and t.table_name in ('PERSON', 'MEMBER', 'AHMMRNBUSINESSSUPPLIER', 'MEMBERAGGREGATION', 'CAREENGINEMEMBERPROCESSSTATUS','TST_OK_BUSINESS_SUPPLIER')
 --and table_name = 'CAREPROVIDER'
-and t.compression <> 'DISABLED'
+--and t.compression <> 'DISABLED'
 group by t.owner, t.table_name, t.num_rows, t.compression, t.compress_for, s.tablespace_name
 order by t.owner, t.table_name;
 
@@ -85,4 +85,9 @@ group by c.owner, c.table_name, c.constraint_type, c.constraint_name, c.index_na
 , c.delete_rule, c.deferrable, c.deferred
 order by c.owner, c.table_name, c.constraint_type, c.constraint_name;
 
-select * from dba_cons_columns;
+-- Functions, Procedures and Packages:
+select * 
+from dba_objects 
+where object_type in ('FUNCTION', 'PROCEDURE', 'PACKAGE', 'PACKAGE BODY', 'TYPE', 'TYPE BODY')
+and owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+and object_name = 'CEPKG_OPERATIONAL_120';

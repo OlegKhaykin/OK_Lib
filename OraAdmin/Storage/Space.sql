@@ -1,14 +1,14 @@
 select
-  d.tablespace_name,
-  d.total_mb,
-  s.used_mb,
-  f.available_mb,
-  ROUND(f.available_mb/d.total_mb*100, 1) pct_free
+  d.tablespace_name, d.max_mb, d.allocated_mb,
+  s.used_mb, f.available_mb,
+  ROUND(f.available_mb/d.allocated_mb*100, 1) allocated_free_pct, 
+  ROUND((d.max_mb - s.used_mb)*100/d.max_mb)  max_free_pct
 from
   (
     select
       tablespace_name,
-      ROUND(sum(bytes)/1024/1024,1) total_mb
+      ROUND(sum(bytes)/1024/1024,1)     allocated_mb,
+      ROUND(sum(DECODE(maxbytes, 0, bytes, maxbytes))/1024/1024,1)  max_mb
     from dba_data_files
     WHERE 1=1
 --    and tablespace_name NOT IN (SELECT tablespace_name FROM dba_data_files WHERE autoextensible = 'YES')
@@ -32,8 +32,7 @@ from
 where s.tablespace_name(+) = d.tablespace_name
 and f.tablespace_name(+) = d.tablespace_name
 --and nvl(f.available_mb,0)/d.total_mb < 0.05
-order by tablespace_name
-;
+order by tablespace_name;
 
 select
   tablespace_name, segment_name, segment_type, round(bytes/1024/1024) mbytes
