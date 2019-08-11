@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/src/Collections/Collections.iml" filepath="$PROJECT_DIR$/src/Collections/Collections.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/DataTypes/DataTypes.iml" filepath="$PROJECT_DIR$/src/DataTypes/DataTypes.iml" />
+      <module fileurl="file://$PROJECT_DIR$/JavaBasics.iml" filepath="$PROJECT_DIR$/JavaBasics.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/MethodReference/MethodReference.iml" filepath="$PROJECT_DIR$/src/MethodReference/MethodReference.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/NestedClasses/NestedClasses.iml" filepath="$PROJECT_DIR$/src/NestedClasses/NestedClasses.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/PublicInterface/PublicInterface.iml" filepath="$PROJECT_DIR$/src/PublicInterface/PublicInterface.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/Strings/Strings.iml" filepath="$PROJECT_DIR$/src/Strings/Strings.iml" />
+      <module fileurl="file://$PROJECT_DIR$/src/Swap/Swap.iml" filepath="$PROJECT_DIR$/src/Swap/Swap.iml" />
+    </modules>
+  </component>
+</project>
