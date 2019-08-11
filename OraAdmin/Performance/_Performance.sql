@@ -17,7 +17,8 @@ with
     and s.status = 'ACTIVE'
     and s.audsid <> sys_context('userenv','sessionid')
     and s.osuser = 'N384433'
-    and upper(s.program) ='SQLPLUS.EXE'
+--    and s.audsid = 618435790
+--    and upper(s.program) ='SQLPLUS.EXE'
   ),
   longops as
   (
@@ -71,17 +72,18 @@ with
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
 --select * from sess  order by audsid, sid;
---select * from waits order by audsid;
-select * from longops order by audsid, time_remaining desc;
+select * from waits order by audsid;
+select * from longops order by audsid, time_remaining desc, elapsed_seconds desc;
 --select * from stats order by audsid;
 select * from events order by audsid;
 select * from hist where rnk=1 order by audsid;
 
-select * from table(dbms_xplan.display_cursor(sql_id => 'd8u0wugv38d4t', format => 'ALL'));
+select * from table(dbms_xplan.display_cursor(sql_id => 'gghbyydza9mk9', format => 'ALL'));
 
 -- ===========================  SQL execution statistics  ==============================
 -- For each SQL statement currently in SGA:
-select * from v$sqlarea;
+select * from v$sqlarea
+where sql_id = '94qmu34jgq9rb';
 
 -- For each plan:
 select * from v$sqlarea_plan_hash;
@@ -97,6 +99,10 @@ select * from v$sql_monitor;
 
 --================================= Execution plans ====================================
 -- For the last EXPLAIN PLAN:
+explain plan for
+SELECT PS.MEMBERID FROM AHMMRNBUSINESSSUPPLIER BS 
+JOIN CAREENGINEMEMBERPROCESSSTATUS PS ON PS.MEMBERID = BS.AHMMRNMEMBERID WHERE BS.LASTBUSINESSAHMSUPPLIERID =12906 ;
+
 select plan_table_output from table(dbms_xplan.display);
 
 -- For the cursor that is still in SGA:
@@ -105,7 +111,7 @@ select * from table
   dbms_xplan.display_cursor
   (
     sql_id =>
-      '116vhat5ajczc', -- PROC_ID=8
+      'gghbyydza9mk9',
     cursor_child_no => 0,
     format => 'ALL'
   )

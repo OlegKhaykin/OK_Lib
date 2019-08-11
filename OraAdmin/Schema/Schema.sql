@@ -3,9 +3,13 @@ alter session set current_schema = ODS;
 -- Tables and Views:
 select owner, object_name, object_type
 from dba_objects
-where owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+where 1=1
+AND owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+And owner = 'AHMADMIN'
 and object_type in ('TABLE', 'VIEW')
 order by owner, object_name;
+
+desc dba_segments;
 
 -- Tables:
 select
@@ -16,7 +20,7 @@ from dba_tables t
 join dba_segments s on s.owner = t.owner and s.segment_name = t.table_name
 where 1=1
 and t.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
-and t.table_name in ('PERSON', 'MEMBER', 'AHMMRNBUSINESSSUPPLIER', 'MEMBERAGGREGATION', 'CAREENGINEMEMBERPROCESSSTATUS','TST_OK_BUSINESS_SUPPLIER')
+and t.table_name in ('PERSON', 'MEMBER', 'AHMMRNBUSINESSSUPPLIER', 'MEMBERAGGREGATION', 'CAREENGINEMEMBERPROCESSSTATUS','TST_OK_MEMBER','TST_OK_PERSON','TST_OK_BUSINESS_SUPPLIER')
 --and table_name = 'CAREPROVIDER'
 --and t.compression <> 'DISABLED'
 group by t.owner, t.table_name, t.num_rows, t.compression, t.compress_for, s.tablespace_name
@@ -36,7 +40,7 @@ select
   CASE nullable WHEN 'N' THEN 'NOT NULL' END nullable
 from dba_tab_columns
 where owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
-and table_name in ('PERSON', 'MEMBER')
+and table_name in ('AHMMRNBUSINESSSUPPLIER')
 --and column_name = 'PROCESSEDFLAG'
 order by owner, table_name, column_id;
 
@@ -51,6 +55,11 @@ and tp.table_owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
 --and tp.compression <> 'DISABLED'
 and tp.table_name in ('PERSON', 'MEMBER', 'AHMMRNBUSINESSSUPPLIER', 'MEMBERAGGREGATION', 'CAREENGINEMEMBERPROCESSSTATUS')
 order by tp.table_owner, tp.table_name, tp.partition_position;
+
+-- Partitions and sub-partitions using my proprietary view:
+select * from v_table_partition_info
+where owner = 'ODS'
+and table_name like 'TST_OK%';
 
 -- Partition Keys:
 select * from dba_part_key_columns
@@ -91,3 +100,10 @@ from dba_objects
 where object_type in ('FUNCTION', 'PROCEDURE', 'PACKAGE', 'PACKAGE BODY', 'TYPE', 'TYPE BODY')
 and owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
 and object_name = 'CEPKG_OPERATIONAL_120';
+
+-- PL/SQL code:
+select * from dba_source
+where owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
+and lower(text) like '%sp_loadsupplierextract%'
+and type <> 'PACKAGE'
+order by type, name, line;
