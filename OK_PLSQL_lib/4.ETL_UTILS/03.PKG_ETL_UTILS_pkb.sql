@@ -10,6 +10,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
   
   History of changes (newest to oldest):
   ------------------------------------------------------------------------------
+  28-Aug-2019, OK: excluded generated columns from the list of inserted/selected columns
   10-Feb-2019, OK: added procedure CLEAR_PARAMETER;
   20-Nov-2018, OK: new version; 
 */
@@ -242,20 +243,32 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       WHERE cl.owner = v_tgt_schema AND cl.table_name = v_tgt_table;
       xl.end_action;
      
-      xl.begin_action('Setting V_INS_COLS and V_SEL_COLS', 'Started', FALSE);
+      xl.begin_action('Setting V_INS_COLS and V_SEL_COLS', 'Started '||v_gen_cols, FALSE);
       SELECT
         concat_v2_set(CURSOR(
           SELECT 's.'||tc.column_name
           FROM tmp_all_columns tc
           JOIN tmp_all_columns sc ON sc.column_name = tc.column_name AND sc.side = 'SRC'
-          WHERE tc.side = 'TGT' AND tc.column_name NOT IN (NVL(v_version_col, '$'), NVL(v_del_col, '$'))
+          WHERE tc.side = 'TGT' 
+            AND tc.column_name NOT IN (NVL(v_version_col, '$'), NVL(v_del_col, '$'))
+            AND tc.column_name NOT IN -- OK-2019-08-28 
+            (
+              SELECT CASE WHEN COLUMN_VALUE LIKE '"%' THEN COLUMN_VALUE ELSE UPPER(COLUMN_VALUE) END
+              FROM TABLE(split_string(v_gen_cols))
+            )
           ORDER BY tc.column_id)
         ),
         concat_v2_set(CURSOR(
           SELECT sc.column_name||' '||sc.data_type
           FROM tmp_all_columns sc
           JOIN tmp_all_columns tc ON tc.column_name = sc.column_name AND tc.side = 'TGT'
-          WHERE sc.side = 'SRC' AND sc.column_name NOT IN (NVL(v_version_col, '$'), NVL(v_del_col, '$'))
+          WHERE sc.side = 'SRC'
+            AND sc.column_name NOT IN (NVL(v_version_col, '$'), NVL(v_del_col, '$'))
+            AND sc.column_name NOT IN -- OK-2019-08-28 
+            (
+              SELECT CASE WHEN COLUMN_VALUE LIKE '"%' THEN COLUMN_VALUE ELSE UPPER(COLUMN_VALUE) END
+              FROM TABLE(split_string(v_gen_cols))
+            )
           ORDER BY sc.column_id)
         )
       INTO v_ins_cols, v_sel_cols
@@ -584,7 +597,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       
     IF p_generate IS NOT NULL THEN
       xl.begin_action('Parsing P_GENERATE', 'Started', FALSE);
-      v_gen_cols := TRIM(REGEXP_SUBSTR(p_generate, '(.*)=(.*)', 1, 1, '', 1));
+      v_gen_cols := REPLACE(TRIM(REGEXP_SUBSTR(p_generate, '(.*)=(.*)', 1, 1, '', 1)), ' '); -- OK-2019-08-28
       v_gen_vals := TRIM(REGEXP_SUBSTR(p_generate, '(.*)=(.*)', 1, 1, '', 2));
       xl.end_action(v_gen_cols ||' / ' || v_gen_vals);
     END IF;
