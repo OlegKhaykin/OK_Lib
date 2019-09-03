@@ -16,7 +16,7 @@ with
     where 1=1
     and s.status = 'ACTIVE'
     and s.audsid <> sys_context('userenv','sessionid')
-    and s.osuser = 'N384433'
+--    and s.osuser = 'N384433'
 --    and s.audsid = 618435790
 --    and upper(s.program) ='SQLPLUS.EXE'
   ),
@@ -71,7 +71,7 @@ with
     join gv$active_session_history ash
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
---select * from sess  order by audsid, sid;
+select * from sess  order by audsid, sid;
 select * from waits order by audsid;
 select * from longops order by audsid, time_remaining desc, elapsed_seconds desc;
 --select * from stats order by audsid;
