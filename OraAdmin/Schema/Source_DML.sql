@@ -31,8 +31,8 @@ from
     left join dba_tables t
       on t.owner = s.owner
      and upper(s.text) like '%'||t.table_name||'%' 
-     and t.table_name in ('AHMMRNBUSINESSSUPPLIER','MEMBERAGGREGATION')
-    where s.owner = 'ODS'
+     and t.table_name in ('MEMBERACTIVITYOCCURRENCE','MEMBERACTIVITYOCCURVAL')
+    where s.owner = 'INCV'
     and
     (
       upper(s.text) like '%INSERT%'   or 

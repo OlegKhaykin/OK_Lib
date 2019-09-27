@@ -1,8 +1,8 @@
 alter session enable parallel dml;
 alter session enable parallel ddl;
 
-CREATE TABLE tst_ok_space_usage PARALLEL 16
-AS SELECT
+--CREATE TABLE tst_ok_space_usage PARALLEL 16 AS 
+SELECT
   d.tablespace_name, d.max_mb, d.allocated_mb,
   NVL(s.used_mb, 0) used_mb, 
   NVL(f.available_mb, 0) available_mb,
@@ -38,44 +38,3 @@ WHERE s.tablespace_name(+) = d.tablespace_name
 AND f.tablespace_name(+) = d.tablespace_name
 --and nvl(f.available_mb,0)/d.total_mb < 0.05
 ;
-
-select * 
-from tst_ok_space_usage 
-where (tablespace_name like '%ODS%' /*or tablespace_name like '%ODS%INDX%'*/)
-order by available_mb desc;
-
-update tst_ok_space_usage
-set used_mb = round(used_mb), available_mb = round(available_mb), allocated_free_pct = round(allocated_free_pct), max_free_pct = round(max_free_pct);
-
-select
-  tablespace_name, segment_name, segment_type, round(bytes/1024/1024) mbytes
---  round(sum(bytes)/1024/1024) mbytes
-from dba_segments
-where 1=1
-and segment_name like 'TST_OK%'
---and tablespace_name = 'FUSION_DATA_RAW'
-order by mbytes,
-tablespace_name, segment_name
---order by mbytes desc
-;
-
--- Space by segment:
-drop table tst_ok_ods_segment_space purge;
-
-create table tst_ok_ods_segment_space as
-select tablespace_name, segment_name, segment_type, round(sum(bytes)/1024/1024) mbytes
-from dba_segments
-where owner = 'ODS'
-group by tablespace_name, segment_name, segment_type
-order by mbytes desc;
-
-select * from tst_ok_ods_segment_space
-where segment_name like '%MEMBER%' or segment_name like '%PERSON%' OR segment_name like '%BUSINESS_SUPP%'
---and segment_name like 'MEMBER%_ARCH'
-order by mbytes desc;
-
-select * from v_table_partition_info
-where owner = 'ODS' and table_name = 'MEMBERREPORTEDDEVHLTHTRACKER';
-
--- TEMP space:
-SELECT * FROM dba_temp_files;
