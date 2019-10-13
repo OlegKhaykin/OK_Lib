@@ -1,10 +1,3 @@
-UPDATE dbg_process_logs set result = 'Cancelled', end_time = systimestamp
-where end_time is null
-and proc_id = 128
-;
-
-commit;
-
 select
   proc_id, name,
   comment_txt, 
@@ -19,7 +12,10 @@ from
   select
     proc_id, name, comment_txt, result,
     start_time, end_time,
-    extract(day from diff) days, extract(hour from diff) hours, extract(minute from diff) minutes, extract(second from diff) seconds
+    extract(day from diff) days, 
+    extract(hour from diff) hours, 
+    extract(minute from diff) minutes, 
+    extract(second from diff) seconds
   from
   ( 
     select l.*, nvl(end_time, systimestamp) - start_time diff 
@@ -30,13 +26,13 @@ from
 order by proc_id desc;
 
 select * from dbg_log_data
-where proc_id IN (875)
+where proc_id IN (1)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
 order by tstamp desc;
 
 select proc_id, action, cnt, seconds 
 from dbg_performance_data 
-where proc_id = 479
+where proc_id = 1
 order by seconds desc;
 

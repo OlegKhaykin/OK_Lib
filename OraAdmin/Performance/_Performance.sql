@@ -130,3 +130,4 @@ select * from table
 
 -- Plan captured in AWR:
 select * from table(dbms_xplan.display_awr('...'));
+

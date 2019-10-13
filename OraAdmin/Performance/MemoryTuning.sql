@@ -1,3 +1,4 @@
+/*
 # Relevant Initialization parameters:
 # Process global area (PGA):
 # - WORKAREA_SIZE_POLICY: AUTO or MANUAL
@@ -8,12 +9,12 @@
 #-----------------------------------------------------------------------------------------------
 # - MAX_SGA_SIZE: absolute maximum for SGA if manually configured pools do not exceed this value
 #                 if they do, this parameter is ignored;
-
-# Current SGA component sizes:
+*/
+-- Current SGA component sizes:
 SELECT component, current_size, Round(current_size/1024/1024) mb
-FROM v$sga_dynamic_components
+FROM v$sga_dynamic_components;
 
-# Predicted values of physical reads for different sizes of the buffer cache
+-- Predicted values of physical reads for different sizes of the buffer cache
 SELECT
   size_for_estimate,
   buffers_for_estimate,
@@ -22,9 +23,9 @@ SELECT
 FROM v$db_cache_advice
 WHERE name = 'DEFAULT'
 AND block_size = (SELECT value FROM v$parameter WHERE name = 'db_block_size')
-AND advice_status = 'ON'
+AND advice_status = 'ON';
 
-# Current statistics about buffer hit ratio
+-- Current statistics about buffer hit ratio
 SELECT s.*,
   ROUND((consistent_gets+db_block_gets-physical_reads)/(consistent_gets+db_block_gets),3) hit_ratio
 FROM
@@ -40,4 +41,4 @@ FROM
   WHERE cg.name = 'consistent gets'
   AND dbg.name = 'db block gets'
   AND pr.name = 'physical reads'
-) s
+) s;
