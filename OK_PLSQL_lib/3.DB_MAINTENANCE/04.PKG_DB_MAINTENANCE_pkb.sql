@@ -4,10 +4,10 @@ CREATE OR REPLACE PACKAGE BODY pkg_db_maintenance AS
 */
   TYPE rec_short_part_descr IS RECORD
   (
-    table_name          VARCHAR2(30),
-    partition_name      VARCHAR2(30),
+    table_name          VARCHAR2(128),
+    partition_name      VARCHAR2(128),
     partition_position  NUMBER(4),
-    subpartition_name   VARCHAR2(30),
+    subpartition_name   VARCHAR2(128),
     part_date           DATE,
     tablespace_name     VARCHAR2(30)
   );
@@ -164,7 +164,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_db_maintenance AS
     i_partition_name      IN VARCHAR2 DEFAULT NULL,
     i_partition_position  IN NUMBER DEFAULT NULL
   ) RETURN tab_partition_info PIPELINED IS
-    rec rec_partition_info;
+    rec                   rec_partition_info;
   BEGIN
     FOR r IN
     (

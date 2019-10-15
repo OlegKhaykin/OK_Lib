@@ -5,9 +5,9 @@ CREATE OR REPLACE PACKAGE pkg_db_maintenance AS
   TYPE rec_partition_info IS RECORD
   (
     table_owner         VARCHAR2(30),
-    table_name          VARCHAR2(30),
+    table_name          VARCHAR2(128),
     tablespace_name     VARCHAR2(30),
-    partition_name      VARCHAR2(30),
+    partition_name      VARCHAR2(128),
     partition_position  NUMBER(6),
     high_value          VARCHAR2(255),
     compress_for        VARCHAR2(30),
@@ -21,10 +21,10 @@ CREATE OR REPLACE PACKAGE pkg_db_maintenance AS
   TYPE rec_subpartition_info IS RECORD
   (
     table_owner           VARCHAR2(30),
-    table_name            VARCHAR2(30),
+    table_name            VARCHAR2(128),
     tablespace_name       VARCHAR2(30),
-    partition_name        VARCHAR2(30),
-    subpartition_name     VARCHAR2(30),
+    partition_name        VARCHAR2(128),
+    subpartition_name     VARCHAR2(128),
     subpartition_position NUMBER(6),
     high_value            VARCHAR2(255),
     compress_for          VARCHAR2(30),
