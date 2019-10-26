@@ -12,12 +12,14 @@ with
       s.sql_id, s.sql_child_number, sqlt.sql_text
     from gv$session s
     join gv$process p on p.inst_id = s.inst_id and p.addr = s.paddr
-    join gv$sqltext sqlt on sqlt.inst_id = s.inst_id and sqlt.sql_id = s.sql_id and sqlt.piece = 0
+    left join gv$sqltext sqlt on sqlt.inst_id = s.inst_id and sqlt.sql_id = s.sql_id and sqlt.piece = 0
     where 1=1
     and s.status = 'ACTIVE'
     and s.audsid <> sys_context('userenv','sessionid')
---    and s.osuser = 'N384433'
---    and s.sid = 822
+    and s.osuser <> 'oracle'
+    and s.osuser = 'n384433'
+    and s.module = 'SQL*Plus'
+--    and s.sid = 339
 --    and s.audsid = 618435790
 --    and upper(s.program) ='SQLPLUS.EXE'
   ),
@@ -73,7 +75,7 @@ with
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
 select * from sess  order by audsid, sid;
-select * from waits order by audsid;
+select * from waits order by audsid, wait_seconds desc;
 select * from longops order by audsid, time_remaining desc, elapsed_seconds desc;
 --select * from stats order by audsid;
 select * from events order by audsid;

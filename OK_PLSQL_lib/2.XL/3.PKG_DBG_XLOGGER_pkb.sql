@@ -5,6 +5,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   -----------------------------------------------------------------------------
   History of changes - newest to oldest:
  
+  26-Nov-2019, OK: bug fix in SPOOL_LOG;
   10-Apr-2019, OK: used CLOB as P_COMMENT data type;
   10-Nov-2015, OK: new version;
 */
@@ -236,7 +237,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
     whr     VARCHAR2(128);
     line    VARCHAR2(255);
   BEGIN
-    whr := NVL(p_where,'comment_txt <> ''Started''');
+    whr := NVL(p_where,'comment_txt NOT LIKE ''Started%''');
+    
     OPEN cur FOR '
     SELECT * FROM
     (
@@ -252,6 +254,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
       EXIT WHEN cur%NOTFOUND;
       DBMS_OUTPUT.PUT_LINE(line||CHR(10));
     END LOOP;
+    
+    CLOSE cur;
   END;
   
   
