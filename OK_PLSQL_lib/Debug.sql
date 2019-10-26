@@ -29,7 +29,7 @@ select
   proc_id, tstamp, log_level, action, to_char(substr(comment_txt,1,255)) result
 --  , comment_txt
 from dbg_log_data
-where proc_id IN (2)
+where proc_id IN (3)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
 order by tstamp desc;
