@@ -63,7 +63,7 @@ GRANT SELECT ON dbg_log_data TO PUBLIC;
 CREATE TABLE dbg_performance_data
 (
   proc_id                    NUMBER(30),
-  action                     VARCHAR2(128),
+  action                     VARCHAR2(255),
   cnt                        NUMBER(10),
   seconds                    NUMBER,
   CONSTRAINT pk_perfdata PRIMARY KEY(proc_id, action), 

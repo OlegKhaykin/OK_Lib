@@ -2,9 +2,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
 /*
   This package is for debugging and performance tuning
  
-  -----------------------------------------------------------------------------
   History of changes - newest to oldest:
- 
+  -----------------------------------------------------------------------------
+  29-Oct-2019, OK: TYPE stats_colection - INDEX BY VARCHAR(255);
   26-Nov-2019, OK: bug fix in SPOOL_LOG;
   10-Apr-2019, OK: used CLOB as P_COMMENT data type;
   10-Nov-2015, OK: new version;
@@ -15,7 +15,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
     cnt         PLS_INTEGER,
     dur         INTERVAL DAY TO SECOND
   );
-  TYPE stats_collection IS TABLE OF stats_record INDEX BY VARCHAR2(128);
+  TYPE stats_collection IS TABLE OF stats_record INDEX BY VARCHAR2(255);
  
   TYPE action_stack_record IS RECORD
   (
