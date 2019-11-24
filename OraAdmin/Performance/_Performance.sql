@@ -17,11 +17,12 @@ with
     and s.status = 'ACTIVE'
     and s.audsid <> sys_context('userenv','sessionid')
     and s.osuser <> 'oracle'
-    and s.osuser = 'n384433'
-    and s.module = 'SQL*Plus'
+--    and s.osuser = 'n384433'
+--    and s.module = 'SQL*Plus'
 --    and s.sid = 339
 --    and s.audsid = 618435790
 --    and upper(s.program) ='SQLPLUS.EXE'
+    and s.sql_id is not null
   ),
   longops as
   (
