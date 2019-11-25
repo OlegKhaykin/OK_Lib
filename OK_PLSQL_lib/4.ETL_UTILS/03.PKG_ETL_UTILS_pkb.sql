@@ -10,6 +10,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
   
   History of changes (newest to oldest):
   ------------------------------------------------------------------------------
+  25-Nov-2019, OK: bug fix;
   28-Aug-2019, OK: excluded generated columns from the list of inserted/selected columns
   10-Feb-2019, OK: added procedure CLEAR_PARAMETER;
   20-Nov-2018, OK: new version; 
@@ -111,7 +112,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
   ) IS
     v_db_link VARCHAR2(100);
   BEGIN
-    xl.begin_action('Looking for table/view "'||p_name||'"', 'Started', FALSE);
+    xl.begin_action('Looking for table/view "'||p_name||'"', 'Started', 10);
     parse_name(p_name, p_schema, p_table, v_db_link);
     
     IF v_db_link IS NOT NULL THEN
@@ -194,6 +195,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     v_on_list         VARCHAR2(500);
     v_sel_cols        VARCHAR2(20000);
     v_ins_cols        VARCHAR2(20000);
+    v_upd_cols        VARCHAR2(20000);
     v_upd_list        VARCHAR2(20000);
     v_changed_cond    VARCHAR2(20000);
     v_hint            VARCHAR2(100);
@@ -223,9 +225,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     BEGIN
       COMMIT; -- to purge TMP_ALL_COLUMNS, just in case
       
-      xl.begin_action('Collecting and analyzing metadata', 'Started', FALSE);
+      xl.begin_action('Collecting and analyzing metadata', 'Started', 10);
 
-      xl.begin_action('Collecting metadata', 'Started', FALSE);
+      xl.begin_action('Collecting metadata', 'Started', 10);
       INSERT INTO tmp_all_columns(side, owner, table_name, column_id, column_name, data_type, uk, nullable)
       SELECT 'SRC', cl.owner, cl.table_name, cl.column_id, cl.column_name, cl.data_type, 'N', 'Y'
       FROM v_all_columns cl
@@ -243,7 +245,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       WHERE cl.owner = v_tgt_schema AND cl.table_name = v_tgt_table;
       xl.end_action;
      
-      xl.begin_action('Setting V_INS_COLS and V_SEL_COLS', 'Started '||v_gen_cols, FALSE);
+      xl.begin_action('Setting V_INS_COLS and V_SEL_COLS', 'Started', 10);
       SELECT
         concat_v2_set(CURSOR(
           SELECT 's.'||tc.column_name
@@ -285,7 +287,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       xl.end_action;
       
       IF v_operation IN ('MERGE','UPDATE') THEN
-        xl.begin_action('Setting V_MATCH_COLS', 'Started', FALSE);
+        xl.begin_action('Setting V_MATCH_COLS', 'Started', 10);
         IF p_match_cols IS NOT NULL THEN
           v_match_cols := UPPER(REPLACE(p_match_cols, ' '));
         ELSE
@@ -301,6 +303,28 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         END IF;
         xl.end_action(v_match_cols);
         
+        xl.begin_action('Setting V_UPD_COLS', 'Started', 10);
+        SELECT concat_v2_set(CURSOR(
+          SELECT column_name FROM tmp_all_columns
+          WHERE side = 'TGT' AND column_name <> NVL(v_del_col, '$')
+         INTERSECT
+          SELECT column_name FROM tmp_all_columns
+          WHERE side = 'SRC'
+         MINUS
+          SELECT t.COLUMN_VALUE
+          FROM TABLE(CAST(split_string(v_match_cols) AS tab_v256)) t
+         MINUS
+          SELECT t.COLUMN_VALUE
+          FROM TABLE(CAST(split_string(v_gen_cols) AS tab_v256)) t
+        ))
+        INTO v_upd_cols
+        FROM dual;
+        xl.end_action(v_upd_cols);
+        
+        xl.begin_action('Setting V_UPD_LIST', 'Started', 10);
+        v_upd_list := REGEXP_REPLACE(v_upd_cols, '([^,]+)', 't.\1=s.\1');
+        xl.end_action(v_upd_list);
+      
         CASE WHEN v_match_cols IS NULL THEN
           Raise_Application_Error(-20000, 'The target table does not have Primary Key. You must use the parameter P_MATCH_COLS.');
         WHEN v_match_cols = 'ROWID' THEN
@@ -314,7 +338,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           END IF;
           
           IF b_del_notfound THEN
-            xl.begin_action('Checking that the source has the column ETL$SRC_INDICATOR','Started',FALSE);
+            xl.begin_action('Checking that the source has the column ETL$SRC_INDICATOR','Started', 10);
             SELECT COUNT(1) INTO n_cnt
             FROM tmp_all_columns
             WHERE side = 'SRC' AND column_name = 'ETL$SRC_INDICATOR';
@@ -333,7 +357,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           v_on_list := 't.ROWID = s.row_id';
           
         ELSE -- matching on regular columns, not on ROWID
-          xl.begin_action('Setting V_ON_LIST', 'Started', FALSE);
+          xl.begin_action('Setting V_ON_LIST', 'Started', 10);
           SELECT concat_v2_set(CURSOR(
             SELECT
               CASE t.nullable
@@ -356,33 +380,30 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           FROM dual;
           xl.end_action(v_on_list);
           
-          xl.begin_action('Setting V_CHANGED_COND', 'Started', FALSE);
-          v_changed_cond := TRIM(UPPER(p_check_changed));
+          xl.begin_action('Setting V_CHANGED_COND', 'Started', 10);
+          v_changed_cond := NVL(TRIM(UPPER(p_check_changed)), 'ALL');
           CASE
-            WHEN v_changed_cond = 'NONE' THEN v_changed_cond := NULL;
-            WHEN v_changed_cond NOT LIKE 'EXCEPT%' AND v_changed_cond <> 'ALL' THEN
-              v_changed_cond := SUBSTR(REPLACE(REGEXP_REPLACE(v_changed_cond, '([^, ]+)', 'OR LNNVL(t.\1=s.\1)'), ',', ' '), 4);
-            ELSE
-            IF v_changed_cond = 'ALL' THEN v_changed_cond := NULL; END IF;
-            
-            SELECT concat_v2_set(CURSOR
-            (
-              SELECT 'LNNVL(t.'||column_name||'=s.'||column_name||')'
-              FROM
+            WHEN v_changed_cond = 'NONE' THEN
+              v_changed_cond := NULL;
+            WHEN v_changed_cond NOT LIKE 'EXCEPT%' THEN
+              v_changed_cond := SUBSTR(REPLACE(REGEXP_REPLACE(CASE v_changed_cond WHEN 'ALL' THEN v_upd_cols ELSE v_changed_cond END, '([^, ]+)', 'OR LNNVL(t.\1=s.\1)'), ',', ' '), 4);
+            ELSE -- EXCEPT:
+              SELECT concat_v2_set(CURSOR
               (
-                SELECT column_name FROM tmp_all_columns WHERE side = 'TGT' AND column_name <> NVL(v_del_col, '$')
-               INTERSECT
-                SELECT column_name FROM tmp_all_columns WHERE side = 'SRC'
-               MINUS
-                SELECT t.COLUMN_VALUE FROM TABLE(CAST(split_string(v_match_cols) AS tab_v256)) t
-               MINUS
-                SELECT t.COLUMN_VALUE FROM TABLE(CAST(split_string(CASE WHEN v_changed_cond LIKE 'EXCEPT%' THEN LTRIM(REPLACE(v_changed_cond, 'EXCEPT')) END) AS tab_v256)) t
-              )
-            ), ' OR ')
-            INTO v_changed_cond
-            FROM dual;
+                SELECT 'LNNVL(t.'||column_name||'=s.'||column_name||')'
+                FROM
+                (
+                  SELECT t.COLUMN_VALUE AS column_name
+                  FROM TABLE(CAST(split_string(v_upd_cols) AS tab_v256)) t
+                 MINUS
+                  SELECT t.COLUMN_VALUE
+                  FROM TABLE(CAST(split_string(LTRIM(REPLACE(v_changed_cond, 'EXCEPT'))) AS tab_v256)) t
+                )
+              ), ' OR ')
+              INTO v_changed_cond
+              FROM dual;
           END CASE;
-        
+          
           IF b_del_notfound THEN
             IF v_del_col IS NOT NULL THEN
               v_changed_cond := 's.etl$src_indicator = 1 AND (('||v_changed_cond||') OR t.'||v_del_col||'='||v_del_val||') OR s.etl$src_indicator IS NULL AND t.'||v_del_col||'='||v_active_val;
@@ -390,24 +411,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           END IF;
           xl.end_action(v_changed_cond);
         END CASE; -- v_match_cols 
-        
-        xl.begin_action('Setting V_UPD_LIST', 'Started', FALSE);
-        SELECT concat_v2_set(CURSOR(
-          SELECT 't.'||column_name||'=s.'||column_name
-          FROM tmp_all_columns
-          WHERE side = 'TGT' AND column_name <> NVL(v_del_col, '$')
-         INTERSECT
-          SELECT 't.'||column_name||'=s.'||column_name
-          FROM tmp_all_columns WHERE side = 'SRC'
-         MINUS
-          SELECT 't.'||t.COLUMN_VALUE||'=s.'||t.COLUMN_VALUE
-          FROM TABLE(CAST(split_string(v_match_cols) AS tab_v256)) t))
-        INTO v_upd_list
-        FROM dual;
-        xl.end_action(v_upd_list);
       END IF; -- MERGE or REPLACE
       
-      xl.begin_action('Checking that all referenced columns actually exist','Started',FALSE);
+      xl.begin_action('Checking that all referenced columns actually exist', 'Started', 10);
       FOR r IN
       (
         SELECT u.column_name, NVL2(ac.column_name, 'Y', 'N') exists_flag
@@ -421,7 +427,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
           WHERE t.COLUMN_VALUE <> 'ROWID'
          UNION
           SELECT t.COLUMN_VALUE
-          FROM TABLE(split_string(REPLACE(UPPER(v_gen_cols), ' '))) t
+          FROM TABLE(split_string(v_gen_cols)) t
         ) u
         LEFT JOIN tmp_all_columns ac
           ON ac.column_name = u.column_name AND ac.side = 'TGT'
@@ -534,7 +540,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
         );
       END IF;
       
-      xl.begin_action('Parsing P_DELETE', 'Started', FALSE);
+      xl.begin_action('Parsing P_DELETE', 'Started', 10);
       IF REGEXP_LIKE(p_delete, 'then', 'i') THEN
         v_del_col := UPPER(RTRIM(REGEXP_SUBSTR(p_delete, 'THEN\s+([^=]+)', 1, 1, 'i', 1)));
         v_del_val := TRIM(REGEXP_SUBSTR(p_delete, 'THEN[^=]+=([^:]+)', 1, 1, 'i', 1)); 
@@ -563,7 +569,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     END IF;
     
     IF p_versions IS NOT NULL THEN
-      xl.begin_action('Parsing P_VERSIONS', 'Started', FALSE);
+      xl.begin_action('Parsing P_VERSIONS', 'Started', 10);
       
       IF v_del_cond IS NOT NULL AND v_del_col IS NULL THEN
         Raise_Application_Error
@@ -596,8 +602,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
     END IF;
       
     IF p_generate IS NOT NULL THEN
-      xl.begin_action('Parsing P_GENERATE', 'Started', FALSE);
-      v_gen_cols := REPLACE(TRIM(REGEXP_SUBSTR(p_generate, '(.*)=(.*)', 1, 1, '', 1)), ' '); -- OK-2019-08-28
+      xl.begin_action('Parsing P_GENERATE', 'Started', 10);
+      v_gen_cols := UPPER(REPLACE(TRIM(REGEXP_SUBSTR(p_generate, '(.*)=(.*)', 1, 1, '', 1)), ' ')); -- OK-2019-08-28
       v_gen_vals := TRIM(REGEXP_SUBSTR(p_generate, '(.*)=(.*)', 1, 1, '', 2));
       xl.end_action(v_gen_cols ||' / ' || v_gen_vals);
     END IF;
@@ -647,7 +653,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_etl_utils AS
       xl.end_action;
     END IF;
     
-    xl.begin_action('Generating source expression', 'Started', FALSE);
+    xl.begin_action('Generating source expression', 'Started', 10);
     v_src := 
     CASE WHEN v_operation = 'INSERT' -- in all these cases we have to do SELECT FROM source
       OR p_where IS NOT NULL
@@ -718,9 +724,9 @@ WHERE ('  || p_where ||')'
         ELSE ' 
 WHERE 1=1'  
         END ||  
-        CASE WHEN v_changed_cond IS NOT NULL AND (b_del_notfound OR p_versions IS NOT NULL) AND v_match_cols <> 'ROWID' THEN '
-AND ('  ||v_changed_cond||')'
-        END ||
+--        CASE WHEN v_changed_cond IS NOT NULL AND (b_del_notfound OR p_versions IS NOT NULL) AND v_match_cols <> 'ROWID' THEN '
+--AND ('  ||v_changed_cond||')'
+--        END ||
         CASE WHEN p_versions IS NOT NULL AND v_match_cols <> 'ROWID' THEN '
 AND (t.'||v_until_col || CASE WHEN c_until_nullable = 'Y' THEN ' IS NULL' ELSE ' = DATE ''9999-12-31''' END ||' OR t.ROWID IS NULL)' 
         END
@@ -733,7 +739,7 @@ WHERE '|| p_where
     END;
     xl.end_action(v_src);
     
-    xl.begin_action('Generating DML command', 'Started', FALSE);
+    xl.begin_action('Generating DML command', 'Started', 10);
     v_cmd :=
     CASE WHEN v_operation IN ('UPDATE', 'MERGE') THEN
 'MERGE '||v_hint||' INTO '||v_tgt_schema||'.'||v_tgt_table||' t 
@@ -851,7 +857,7 @@ LOG ERRORS INTO '||v_err_schema||'.'||v_err_table||' (:tag) REJECT LIMIT UNLIMIT
       EXECUTE IMMEDIATE v_act;
       xl.end_action;
 
-      xl.begin_action('Converting DML command into PL/SQL block with LOOP', 'Started', FALSE);
+      xl.begin_action('Converting DML command into PL/SQL block with LOOP', 'Started', 10);
       
       v_cmd := 
 'DECLARE

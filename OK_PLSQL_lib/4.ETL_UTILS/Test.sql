@@ -1,20 +1,21 @@
+create sequence seq_tst_ok;
+
 -- Target:
 create table tst_ok
 (
-  ID             INTEGER CONSTRAINT pk_tst_ok PRIMARY KEY,
-  OWNER          VARCHAR2(128 BYTE) NOT NULL,
-  OBJECT_NAME    VARCHAR2(128 BYTE) NOT NULL,
-  OBJECT_TYPE    VARCHAR2(30) NOT NULL,
-  LAST_DDL_TIME  DATE NOT NULL,
-  source_system  VARCHAR2(30) NOT NULL,
+  id             INTEGER CONSTRAINT pk_tst_ok PRIMARY KEY,
+  owner          VARCHAR2(128 BYTE) NOT NULL,
+  object_name    VARCHAR2(128 BYTE) NOT NULL,
+  object_type    VARCHAR2(30) NOT NULL,
+  last_ddl_time  DATE NOT NULL,
   deleted_flag   CHAR(1) DEFAULT 'N' NOT NULL CHECK (deleted_flag IN ('N','Y')),
-  CONSTRAINT uk_tst_ok UNIQUE(OWNER, OBJECT_NAME)
+  CONSTRAINT uk_tst_ok UNIQUE(OWNER, object_name)
 );
 
 -- Source:
 CREATE OR REPLACE VIEW v_ok_tables AS 
 SELECT * FROM all_objects
-WHERE owner = 'OK' AND object_type = 'TABLE';
+WHERE owner = 'POC' AND object_type = 'TABLE';
 
 -- Difference:
 CREATE OR REPLACE VIEW v_table_diff AS
@@ -30,9 +31,10 @@ SELECT
   CASE WHEN s.owner IS NULL THEN 'Y' ELSE 'N' END AS deleted_flag
 FROM
 (
-  SELECT * FROM sys.all_objects s
+  SELECT * FROM all_objects s
   WHERE object_type = 'TABLE'
-) S
+  AND owner = 'POC'
+) s
 FULL JOIN tst_ok t
   ON t.owner = s.owner AND t.object_name = s.object_name
 WHERE s.owner IS NULL AND t.deleted_flag = 'N'
@@ -48,18 +50,18 @@ alter session set nls_date_format = 'dd-Mon-yy hh24:mi:ss';
 --------------------------------------------------------------------------------
 -- Test #1:
 begin
-  xl.open_log('TST-OK', 'Initial population: INSERT with WHERE', true);
+  xl.open_log('TST-OK', 'Initial population: INSERT with WHERE');
 
   pkg_etl_utils.add_data
   (
     p_operation       => 'replace',
     p_target          => 'tst_ok',
     p_source          => 'all_objects',
-    p_where           => q'[owner = 'OK' AND object_type = 'TABLE']',
+    p_where           => q'[owner = 'POC' AND object_type = 'TABLE']',
     p_hint            => 'all_rows',
-    p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'OK']',
---    p_commit_at       => -1,
-    p_commit_at       => 10
+    p_generate        => q'[id = seq_tst_ok.nextval]'
+    , p_commit_at       => -1
+--    , p_commit_at       => 10
   );
 
   xl.close_log('Successfully completed');
@@ -69,30 +71,24 @@ exception
   raise;
 end;
 /
-select * from v_table_diff where owner = 'OK'; -- should be no rows
-select * from tst_ok; -- 17 rows: this is the reference number to be used in the remaining tests
 
-create table tst_ok_dummy(n number);
-drop table tst_ok_dummy purge;
+select count(1) from tst_ok; 
 
 --------------------------------------------------------------------------------
 -- Test #2, using MERGE:
-create table tst_ok_dummy(n number);
-drop table tst_ok_dummy purge;
-select * from v_table_diff where owner = 'OK'; -- should be 1 row
-
 begin
-  xl.open_log('TST-OK', 'Merge from source veiw, no WHERE', true);
+  xl.open_log('TST-OK', 'Merge from source veiw, no WHERE');
 
   pkg_etl_utils.add_data
   (
-    p_operation       => 'merge', 
+    p_operation       => 'MERGE', 
     p_target          => 'tst_ok',
     p_source          => 'v_ok_tables',    
     p_match_cols      => 'owner, object_name',
-    p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
---    p_commit_at       => -1--,
-    p_commit_at       => 10
+    p_generate        => q'[id, last_ddl_time=seq_tst_ok.nextval, sysdate]'
+    , p_check_changed   => 'NONE'
+    , p_commit_at       => -1
+--    , p_commit_at       => 10
   );
 
   xl.close_log('Successfully completed');
@@ -102,8 +98,11 @@ exception
   raise;
 end;
 /
-select * from v_table_diff where owner = 'OK'; -- should be no rows
-select * from tst_ok; -- should be 18 rows
+
+select * from v_table_diff; -- should be no rows
+select * from tst_ok;
+update tst_ok set object_type = 'UNKNOWN';
+commit;
 
 --------------------------------------------------------------------------------
 -- Test #3, logical deletion:
@@ -111,21 +110,21 @@ drop table tst_ok_dummy purge;
 select * from v_table_diff where owner = 'OK'; -- should be 1 row
 
 begin
-  xl.open_log('TST-OK', 'Merge from source with WHERE condition and HINT, doing logical deletion, no versions', true);
+  xl.open_log('TST-OK', 'Merge from source with WHERE condition and HINT, doing logical deletion, no versions');
 
   pkg_etl_utils.add_data
   (
     p_operation       => 'merge', 
     p_target          => 'tst_ok',
     p_source          => 'all_objects',
-    p_where           => q'[owner = 'OK' AND object_type = 'TABLE']',
+    p_where           => q'[owner = 'POC' AND object_type = 'TABLE']',
     p_match_cols      => 'owner, object_name',
     p_hint            => 'all_rows',
     p_check_changed  => 'except object_type',
     p_delete          => 'if notfound then deleted_flag=''Y'':''N''',
-    p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
---    p_commit_at       => -1
-    p_commit_at       => 10
+    p_generate        => q'[id = seq_tst_ok.nextval]'
+    , p_commit_at       => -1
+--    , p_commit_at       => 10
   );
 
   xl.close_log('Successfully completed');
@@ -135,28 +134,26 @@ exception
   raise;
 end;
 /
-select * from v_table_diff where owner = 'OK'; -- should be no rows
-select * from tst_ok where object_name = 'TST_OK_DUMMY'; -- should be 1 row with DELETED_FLAG='Y'
+select * from v_table_diff; -- should be no rows
+select * from tst_ok;
 
 -- Test #4: physical deletion
-select * from v_table_diff where owner = 'OK'; -- should be no rows
-
 begin
-  xl.open_log('TST-OK', 'Simple merge from source with WHERE condition and HINT and physical deletion, no versions', true);
+  xl.open_log('TST-OK', 'Simple merge from source with WHERE condition and HINT and physical deletion, no versions', 10);
 
   pkg_etl_utils.add_data
   (
     p_operation       => 'merge', 
     p_target          => 'tst_ok',
     p_source          => 'all_objects',
-    p_where           => q'[owner = 'OK' AND object_type = 'TABLE']',
+    p_where           => q'[owner = 'POC' AND object_type = 'TABLE']',
     p_match_cols      => 'owner, object_name',
     p_hint            => 'all_rows',
-    p_check_changed  => 'except object_type',
     p_delete          => 'if notfound',
-    p_generate        => q'[id, source_system = seq_tst_ok.nextval, 'PCS']',
---    p_commit_at       => -1
-    p_commit_at       => 10
+    p_generate        => q'[id = seq_tst_ok.nextval]'
+--    , p_check_changed  => 'except object_type'
+--    , p_commit_at       => -1
+--    , p_commit_at       => 10
   );
 
   xl.close_log('Successfully completed');
@@ -167,8 +164,12 @@ exception
 end;
 /
 
-select * from v_table_diff where owner = 'OK'; -- should be no rows
-select * from tst_ok where object_name = 'TST_OK_DUMMY'; -- should be no rows
+select * from v_table_diff; -- should be no rows
+select * from tst_ok;
+rollback;
+commit;
+update tst_ok set last_ddl_time = sysdate;
+
 
 -- Test #5: using ROWID for matching
 create table tst_ok_dummy (n number);

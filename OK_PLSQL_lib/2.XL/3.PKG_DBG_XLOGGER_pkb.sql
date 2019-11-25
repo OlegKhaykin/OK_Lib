@@ -3,7 +3,8 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   This package is for debugging and performance tuning
  
   History of changes - newest to oldest:
-  -----------------------------------------------------------------------------
+  ------------------------------------------------------------------------------
+  24-Nov-2019, OK: P_LOG_LEVEL instead of P_DEBUG;
   29-Oct-2019, OK: TYPE stats_colection - INDEX BY VARCHAR(255);
   26-Nov-2019, OK: bug fix in SPOOL_LOG;
   10-Apr-2019, OK: used CLOB as P_COMMENT data type;
@@ -19,15 +20,15 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
  
   TYPE action_stack_record IS RECORD
   (
-    action      dbg_log_data.action%TYPE,
-    debug_mode  BOOLEAN
+    action        dbg_log_data.action%TYPE,
+    log_in_table  BOOLEAN
   );
   TYPE action_stack_type IS TABLE OF action_stack_record INDEX BY PLS_INTEGER;
  
   TYPE call_record IS RECORD
   (
     module    VARCHAR2(100),
-    log_level dbg_log_data.log_level%TYPE
+    log_depth dbg_log_data.log_depth%TYPE
   );
   TYPE call_stack_type IS TABLE OF call_record INDEX BY PLS_INTEGER;
  
@@ -37,19 +38,21 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   action_stack  action_stack_type;
   call_stack    call_stack_type;
   dump_array    dump_collection;
- 
-  v_main_module VARCHAR2(256);
-  n_log_level   dbg_log_data.log_level%TYPE;
-  n_call_level  PLS_INTEGER;
-  n_dump_idx    PLS_INTEGER;
-  b_debug       BOOLEAN;
- 
+  
+  g_log_level     PLS_INTEGER;
+  
+  v_main_module   VARCHAR2(256);
+  r_process_log   dbg_process_logs%ROWTYPE;
+  
+  n_log_depth     dbg_log_data.log_depth%TYPE;
+  n_call_depth    PLS_INTEGER;
+  n_dump_idx      PLS_INTEGER;
   
   PROCEDURE open_log
   (
-    p_name IN VARCHAR2,
-    p_comment IN CLOB DEFAULT NULL,
-    p_debug IN BOOLEAN DEFAULT FALSE
+    p_name      IN VARCHAR2,
+    p_comment   IN CLOB DEFAULT NULL,
+    p_log_level IN PLS_INTEGER DEFAULT 0
   ) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
   BEGIN
@@ -61,27 +64,32 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
       dump_array.DELETE;
       stats_array.DELETE;
      
-      n_call_level := 0;
-      n_log_level := 0;
+      n_call_depth := 0;
+      n_log_depth := 0;
       n_dump_idx := 1;
      
-      b_debug := p_debug;
-     
+      g_log_level := NVL(p_log_level, 0);
+      
       SELECT seq_dbg_xlogger.NEXTVAL INTO g_proc_id FROM dual;
-     
-      INSERT INTO dbg_process_logs(proc_id, name, comment_txt)
-      VALUES(g_proc_id, p_name, p_comment);
-     
-      COMMIT;
+      
+      r_process_log.proc_id := g_proc_id;
+      r_process_log.name := p_name;
+      r_process_log.comment_txt := p_comment;
+      r_process_log.start_time := SYSTIMESTAMP;
+      
+      IF g_log_level >= 0 THEN
+        INSERT INTO dbg_process_logs VALUES r_process_log;
+        COMMIT;
+      END IF;
     END IF;
    
     DBMS_APPLICATION_INFO.SET_MODULE(p_name, NULL);
      
-    n_call_level := n_call_level+1;
-    call_stack(n_call_level).module := p_name;
-    call_stack(n_call_level).log_level:= n_log_level;
+    n_call_depth := n_call_depth+1;
+    call_stack(n_call_depth).module := p_name;
+    call_stack(n_call_depth).log_depth := n_log_depth;
      
-    begin_action(p_name, p_comment, p_debug);
+    begin_action(p_name, p_comment, g_log_level);
   END;
     
  
@@ -102,14 +110,14 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
     dmp   dbg_log_data%ROWTYPE;
   BEGIN
     IF p_persist THEN
-      INSERT INTO dbg_log_data(proc_id, tstamp, log_level, action, comment_txt)
-      VALUES(g_proc_id, SYSTIMESTAMP, n_log_level, p_action, p_comment);
+      INSERT INTO dbg_log_data(proc_id, tstamp, log_depth, action, comment_txt)
+      VALUES(g_proc_id, SYSTIMESTAMP, n_log_depth, p_action, p_comment);
       
       COMMIT;
     ELSE
       dmp.proc_id := g_proc_id;
       dmp.tstamp := SYSTIMESTAMP;
-      dmp.log_level := n_log_level;
+      dmp.log_depth := n_log_depth;
       dmp.action := p_action;
       dmp.comment_txt := p_comment;
     
@@ -123,7 +131,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   (
     p_action    IN VARCHAR2, 
     p_comment   IN CLOB DEFAULT 'Started', 
-    p_debug     IN BOOLEAN DEFAULT NULL
+    p_log_level IN PLS_INTEGER DEFAULT 0
   ) IS
     stk   action_stack_record;
   BEGIN
@@ -132,12 +140,12 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
     IF g_proc_id IS NOT NULL THEN
       stk.action := p_action;
      
-      IF p_debug OR p_debug IS NULL AND b_debug THEN
-        stk.debug_mode := TRUE;
+      IF p_log_level BETWEEN 0 AND g_log_level THEN
+        stk.log_in_table := TRUE;
       ELSE
-        stk.debug_mode := FALSE;
+        stk.log_in_table := FALSE;
       END IF;
-     
+      
       IF stats_array.EXISTS(p_action) AND stats_array(p_action).tstamp IS NOT NULL THEN
         -- This can happen due to a bug in the caller program:
         -- it is not allowed to begin the same action again without ending it first
@@ -145,11 +153,11 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
       ELSE
         -- Mark start of the action and put it into the action stack
         stats_array(p_action).tstamp := SYSTIMESTAMP;
-        n_log_level := n_log_level+1;
-        action_stack(n_log_level) := stk;
+        n_log_depth := n_log_depth+1;
+        action_stack(n_log_depth) := stk;
       END IF;
       
-      write_log(p_action, p_comment, stk.debug_mode);
+      write_log(p_action, p_comment, stk.log_in_table);
     END IF;
   END;
  
@@ -158,74 +166,94 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
     stk   action_stack_record;
   BEGIN
     IF g_proc_id IS NOT NULL THEN
-      stk := action_stack(n_log_level); -- get current action from the stack
+      stk := action_stack(n_log_depth); -- get current action from the stack
     
       IF NOT stats_array.EXISTS(stk.action) OR stats_array(stk.action).tstamp IS NULL THEN
         -- This can happen only due to a bug in this program
         Raise_Application_Error(-20000, 'XL.END_ACTION: action "'||stk.action||'" has not been started! This is a bug!');
       END IF;
-     
+      
       stats_array(stk.action).cnt := NVL(stats_array(stk.action).cnt, 0) + 1; -- count occurances of this action
       stats_array(stk.action).dur := NVL(stats_array(stk.action).dur, INTERVAL '0' SECOND) + (SYSTIMESTAMP - stats_array(stk.action).tstamp); -- add to total time spent on this action
       stats_array(stk.action).tstamp := NULL; -- mark end of action
-    
-      write_log(stk.action, p_comment, stk.debug_mode);
       
-      n_log_level := n_log_level-1; -- go up by the action stack
-      IF n_log_level > 0 THEN
-        DBMS_APPLICATION_INFO.SET_ACTION(action_stack(n_log_level).action);
+      write_log(stk.action, p_comment, stk.log_in_table);
+      
+      n_log_depth := n_log_depth-1; -- go up by the action stack
+      IF n_log_depth > 0 THEN
+        DBMS_APPLICATION_INFO.SET_ACTION(action_stack(n_log_depth).action);
       ELSE
         DBMS_APPLICATION_INFO.SET_ACTION(NULL);
       END IF;
     END IF;
   END;
- 
+  
   
   PROCEDURE close_log(p_result IN VARCHAR2 DEFAULT NULL, p_dump IN BOOLEAN DEFAULT FALSE) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
   
-    act    dbg_log_data.action%TYPE;
+    r_act     dbg_log_data.action%TYPE;
+    n_seconds NUMBER;
+    
+    PROCEDURE set_seconds(p_interval INTERVAL DAY TO SECOND) IS
+    BEGIN
+      n_seconds := 
+      EXTRACT(DAY FROM p_interval)*86400 +
+      EXTRACT(HOUR FROM p_interval)*3600 +
+      EXTRACT(MINUTE FROM p_interval)*60 +
+      EXTRACT(SECOND FROM p_interval);
+    END;
   BEGIN
     IF g_proc_id IS NOT NULL THEN -- if logging has been started in this session:
-      WHILE n_log_level > call_stack(n_call_level).log_level LOOP
+      WHILE n_log_depth > call_stack(n_call_depth).log_depth LOOP
         end_action(p_result);
       END LOOP;
-       
-      n_call_level := n_call_level-1; -- go up by the call stack:
-      IF n_call_level > 0 THEN
-        DBMS_APPLICATION_INFO.SET_MODULE(call_stack(n_call_level).module, NULL);
+      
+      n_call_depth := n_call_depth-1; -- go up by the call stack:
+      IF n_call_depth > 0 THEN
+        DBMS_APPLICATION_INFO.SET_MODULE(call_stack(n_call_depth).module, NULL);
       ELSE
         DBMS_APPLICATION_INFO.SET_MODULE(v_main_module, NULL);
       END IF;
       
-      IF n_call_level = 0 THEN -- if this is the end of the main process
+      IF n_call_depth = 0 THEN -- if this is the end of the main process
+        r_process_log.result := p_result;
+        r_process_log.end_time := SYSTIMESTAMP;
+       
+        IF g_log_level < 0 THEN
+          set_seconds(r_process_log.end_time - r_process_log.start_time);
+          
+          IF p_dump OR n_seconds >= ABS(g_log_level) THEN
+            INSERT INTO dbg_process_logs VALUES r_process_log;
+          END IF;
+        END IF;
+        
         IF p_dump THEN -- if request received to dump debugging information accumulated in memory (usually from an exception handler):
           -- Save log data accumulated in memory:
           FORALL i IN 1..dump_array.COUNT INSERT INTO dbg_log_data VALUES dump_array(i);
         END IF;
-      
+        
         -- Save performance statistics accumulated in memory:
-        act := stats_array.FIRST;
-       
-        WHILE act IS NOT NULL LOOP
-          INSERT INTO dbg_performance_data(proc_id, action, cnt, seconds)
-          VALUES
-          (
-            g_proc_id, act, stats_array(act).cnt,
-            EXTRACT(DAY FROM stats_array(act).dur)*86400 +
-            EXTRACT(HOUR FROM stats_array(act).dur)*3600 +
-            EXTRACT(MINUTE FROM stats_array(act).dur)*60 +
-            EXTRACT(SECOND FROM stats_array(act).dur)
-          );
+        IF g_log_level >= 0 OR p_dump OR n_seconds >= ABS(g_log_level) THEN
+          r_act := stats_array.FIRST;
          
-          act := stats_array.NEXT(act);
-        END LOOP;
-       
-        UPDATE dbg_process_logs SET end_time = SYSTIMESTAMP, result = p_result
-        WHERE proc_id = g_proc_id;
-       
+          WHILE r_act IS NOT NULL LOOP
+            set_seconds(stats_array(r_act).dur);
+            
+            INSERT INTO dbg_performance_data(proc_id, action, cnt, seconds)
+            VALUES(g_proc_id, r_act, stats_array(r_act).cnt, n_seconds);
+            
+            r_act := stats_array.NEXT(r_act);
+          END LOOP;
+        END IF;
+        
+        IF g_log_level >= 0 THEN
+          UPDATE dbg_process_logs SET end_time = SYSTIMESTAMP, result = p_result
+          WHERE proc_id = g_proc_id;
+        END IF;
+        
         COMMIT;
-       
+        
         g_proc_id := NULL;
       END IF;
     END IF;
@@ -262,7 +290,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   PROCEDURE cancel_log IS
   BEGIN
    IF g_proc_id IS NOT NULL THEN
-      n_call_level := 1;
+      n_call_depth := 1;
       close_log('Cancelled');
     END IF;
   END;

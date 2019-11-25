@@ -46,7 +46,7 @@ CREATE TABLE dbg_log_data
 (
   proc_id                    NUMBER(30) NOT NULL,
   tstamp                     TIMESTAMP(6) NOT NULL,
-  log_level                  NUMBER(2) NOT NULL,
+  log_depth                  NUMBER(2) NOT NULL,
   action                     VARCHAR2(255) NOT NULL,
   comment_txt                CLOB,
   CONSTRAINT fk_logdata_proc FOREIGN KEY (proc_id) REFERENCES dbg_process_logs(proc_id) ON DELETE CASCADE

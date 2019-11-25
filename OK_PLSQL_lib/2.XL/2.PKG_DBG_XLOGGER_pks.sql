@@ -3,13 +3,14 @@ CREATE OR REPLACE PACKAGE pkg_dbg_xlogger AS
   This package is for debugging and performance tuning
  
   History of changes (newest to oldest):
-  --------------------------------------------------------------------------------
+  ------------------------------------------------------------------------------
+  24-Nov-2019, OK: P_LOG_LEVEL instead of P_DEBUG;
   10-Apr-2019, OK: used CLOB as P_COMMENT data type;
   10-Nov-2015, OK: new version;
 */
   g_proc_id     dbg_process_logs.proc_id%TYPE;
 
-  PROCEDURE open_log(p_name IN VARCHAR2, p_comment IN CLOB DEFAULT NULL, p_debug IN BOOLEAN DEFAULT FALSE);
+  PROCEDURE open_log(p_name IN VARCHAR2, p_comment IN CLOB DEFAULT NULL, p_log_level IN PLS_INTEGER DEFAULT 0);
  
   FUNCTION get_current_proc_id RETURN PLS_INTEGER;
  
@@ -17,7 +18,7 @@ CREATE OR REPLACE PACKAGE pkg_dbg_xlogger AS
   (
     p_action    IN VARCHAR2, 
     p_comment   IN CLOB DEFAULT 'Started',
-    p_debug     IN BOOLEAN DEFAULT NULL
+    p_log_level IN PLS_INTEGER DEFAULT 0
   );
  
   PROCEDURE end_action(p_comment IN CLOB DEFAULT 'Completed');
