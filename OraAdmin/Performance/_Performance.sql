@@ -75,8 +75,13 @@ with
     join gv$active_session_history ash
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
+<<<<<<< Updated upstream
 select * from sess  order by audsid, sid;
 select * from waits order by audsid, wait_seconds desc;
+=======
+--select * from sess  order by audsid, sid;
+select * from waits order by audsid;
+>>>>>>> Stashed changes
 select * from longops order by audsid, time_remaining desc, elapsed_seconds desc;
 --select * from stats order by audsid;
 select * from events order by audsid;
