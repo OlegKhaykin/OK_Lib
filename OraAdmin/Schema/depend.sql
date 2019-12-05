@@ -3,7 +3,6 @@ SET VERIFY OFF
 define obj=INCV.INCV_PROGRAMCONFIGURATION_PKG
 
 create table N384433.tst_ok_dependencies as
---INSERT INTO test 
 SELECT * FROM dba_dependencies
 WHERE owner NOT IN ('SYS','SYSTEM');
 
