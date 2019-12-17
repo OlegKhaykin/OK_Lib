@@ -17,7 +17,10 @@ where sql_text like '%SELECT /*+ ordered */%CAREENGINEMEMBERPROCESSSTATUS%'
 
 select * from dba_hist_sql_bind_metadata;
 
-select * from dba_hist_sqlstat;
+select * from dba_hist_sqlstat
+where sql_id = '6vn5jzmctkbkw'
+order by snap_id desc
+;
 
 select * from dba_hist_stat_name
 where stat_name like '%econd%' or stat_name like '%time%'
