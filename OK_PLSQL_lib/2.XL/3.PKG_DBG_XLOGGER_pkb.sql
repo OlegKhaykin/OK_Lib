@@ -4,6 +4,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
  
   History of changes - newest to oldest:
   ------------------------------------------------------------------------------
+  11-Dec-2019, OK: added procedure WRITE_SUPPL_DATA;
   24-Nov-2019, OK: P_LOG_LEVEL instead of P_DEBUG;
   29-Oct-2019, OK: TYPE stats_colection - INDEX BY VARCHAR(255);
   26-Nov-2019, OK: bug fix in SPOOL_LOG;
@@ -50,9 +51,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   
   PROCEDURE open_log
   (
-    p_name      IN VARCHAR2,
-    p_comment   IN CLOB DEFAULT NULL,
-    p_log_level IN PLS_INTEGER DEFAULT 0
+    p_name        IN VARCHAR2,
+    p_comment     IN CLOB DEFAULT NULL, 
+    p_log_level   IN PLS_INTEGER DEFAULT 0
   ) IS
     PRAGMA AUTONOMOUS_TRANSACTION;
   BEGIN
@@ -98,6 +99,13 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
     RETURN g_proc_id;
   END;
   
+  PROCEDURE write_suppl_data(p_name IN dbg_supplemental_data.name%TYPE, p_value IN SYS.AnyData) IS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  BEGIN
+    INSERT INTO dbg_supplemental_data VALUES(g_proc_id, p_name, SYSTIMESTAMP, p_value);
+    COMMIT;
+  END;
+    
   
   PROCEDURE write_log
   (
@@ -129,9 +137,9 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   
   PROCEDURE begin_action
   (
-    p_action    IN VARCHAR2, 
-    p_comment   IN CLOB DEFAULT 'Started', 
-    p_log_level IN PLS_INTEGER DEFAULT 0
+    p_action      IN VARCHAR2, 
+    p_comment     IN CLOB DEFAULT 'Started', 
+    p_log_level   IN PLS_INTEGER DEFAULT 0
   ) IS
     stk   action_stack_record;
   BEGIN

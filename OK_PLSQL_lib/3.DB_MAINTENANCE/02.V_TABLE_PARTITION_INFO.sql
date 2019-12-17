@@ -1,5 +1,6 @@
 CREATE OR REPLACE VIEW v_table_partition_info AS
 SELECT
+  -- 11-Dec-2019, OK: added column SUB_PARTITIONED_BY;
   t.owner, t.table_name,
   concat_v2_set
   (
@@ -11,6 +12,16 @@ SELECT
       ORDER BY column_position
     )
   ) AS partitioned_by,
+  concat_v2_set
+  (
+    CURSOR
+    (
+      SELECT column_name 
+      FROM all_subpart_key_columns
+      WHERE owner = t.owner AND name = t.table_name
+      ORDER BY column_position
+    )
+  ) AS sub_partitioned_by,
   tp.partition_name, tp.partition_position, tp.high_value,
   NVL(tsp.tablespace_name, tp.tablespace_name) AS tablespace_name,
   tp.compress_for part_compression, tp.num_blocks part_blocks,

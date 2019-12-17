@@ -36,24 +36,7 @@ with
        and regexp_like(upper(s.text), '(\.|\s|^)'||t.table_name||'(\s|$)') 
        and t.table_name in 
        (
-        'ACTIVITY',
-        'ACTIVITYDETAIL',
-        'ACTIVITYGROUP',
-        'ACTIVITYGROUPACTIVITYXREF',
-        'DBUG_SETINCENTIVECONFIGURATION',
-        'INCENTIVEATTRIBUTE',
-        'INCENTIVEELIGIBILITY',
-        'INCENTIVEGOALTYPE',
-        'INCENTIVEGOALVALUE',
-        'INCENTIVEMESSAGE',
-        'INCENTIVEMESSAGEATTR',
-        'INCENTIVEOVERRIDE',
-        'INCVSQLSTATEMENT_TMP',
-        'PROGRAM',
-        'RELATEDACTIVITYXREF',
-        'REWARD',
-        'REWARDACTIVITYGROUPXREF',
-        'SUPPLIERPROGRAMASSOC'
+        'MEMBERACTIVITYOCCURRENCE'
       )
       where s.owner = 'INCV'
       and
@@ -68,7 +51,7 @@ with
     ) sq
   ) q
   where q.table_name is not null and q.dml_line > (q.table_line-3)
-  and q.name = 'INCV_PROGRAMCONFIGURATION_PKG'
+--  and q.name = 'INCV_PROGRAMCONFIGURATION_PKG'
 )
---select * from dml_info order by table_name, type, name, table_line;
+select * from dml_info order by table_name, type, name, table_line;
 select table_name, listagg(dml_operation, ',') within group(order by dml_operation) from (select distinct table_name, dml_operation from dml_info) group by table_name order by table_name;

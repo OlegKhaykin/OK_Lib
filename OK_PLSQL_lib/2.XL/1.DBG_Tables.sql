@@ -8,9 +8,9 @@ begin
     (
       object_type = 'TABLE' and object_name in
       (
-        'DBG_PROCESS_LOGS', 'DBG_LOG_DATA', 'DBG_PERFORMANCE_DATA'
+        'DBG_PROCESS_LOGS', 'DBG_LOG_DATA', 'DBG_PERFORMANCE_DATA', 'DBG_SUPPLEMENTAL_DATA'
       )
-      or
+      OR
       object_type = 'SEQUENCE' and object_name = 'SEQ_DBG_XLOGGER'
     )
   )
@@ -77,3 +77,20 @@ PARTITION BY RANGE(proc_id) INTERVAL(1000)
 CREATE INDEX fki_dbg_perfdata_procid ON dbg_performance_data(proc_id) LOCAL;
  
 GRANT SELECT ON dbg_performance_data TO PUBLIC;
+
+CREATE TABLE dbg_supplemental_data
+(
+  proc_id   NUMBER(30)    NOT NULL,
+  name      VARCHAR2(128) NOT NULL,
+  tstamp    TIMESTAMP(6)  NOT NULL,
+  value     SYS.ANYDATA   NOT NULL,
+  CONSTRAINT dbg_suppldat_fk_proc FOREIGN KEY(proc_id) REFERENCES dbg_process_logs ON DELETE CASCADE 
+)
+PARTITION BY RANGE (proc_id) INTERVAL (1000)
+(
+  PARTITION p1 VALUES LESS THAN (1000)
+);
+
+CREATE INDEX idx_dbg_suppldat_fk_proc ON dbg_supplemental_data(proc_id);
+
+GRANT SELECT ON dbg_supplemental_data TO PUBLIC;

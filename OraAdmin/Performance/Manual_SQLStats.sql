@@ -15,34 +15,50 @@ drop table my_sess_stat purge;
 
 create table my_sess_stat as
 select sysdate as dtime, inst_id, audsid, sid, serial#, username, sql_id, osuser, program
-FROM gv$session s
+from gv$session s
 where status = 'ACTIVE'
 and sql_id is not null
 and rownum < 1;
 
-declare 
+create or replace procedure sp_gather_sql_stat(p_sleep_time in pls_integer default 60) as
   dt date;
 begin
---  loop
+  loop
     dt := sysdate;
     
     insert into my_sql_stat 
     select dt, inst_id, sql_id, sql_fulltext, executions, elapsed_time, null
-    from gv$sqlarea ;
+    from gv$sqlarea@prod ;
     
     insert into my_sess_stat
     select dt, inst_id, audsid, sid, serial#, username, sql_id, osuser, program
-    FROM gv$session s
+    from gv$session@prod s
     where status = 'ACTIVE'
     and sql_id is not null;
     
     commit;
---  end loop;
+    
+    dbms_lock.sleep(p_sleep_time);
+  end loop;
 end;
 /
 
+select * from my_sess_stat;
+
+select * from my_sql_stat
+where sql_id = '6vn5jzmctkbkw'
+order by inst_id, dtime
+;
+
+
 merge into my_sql_stat t
-using (select dtime, inst_id, sql_id, rank() over(partition by inst_id, sql_id order by dtime) rnk from my_sql_stat) q
+using 
+(
+  select
+    dtime, inst_id, sql_id,
+    rank() over(partition by inst_id, sql_id order by dtime) rnk 
+  from my_sql_stat
+) q
 on (t.dtime = q.dtime and t.inst_id = q.inst_id and t.sql_id = q.sql_id)
 when matched then update set t.rnum = q.rnk;
 

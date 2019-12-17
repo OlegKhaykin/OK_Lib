@@ -18,5 +18,5 @@ from
   AND name = Upper(Substr('&obj', Instr('&obj','.')+1))
 )
 --where name = 'INCV_PROGRAMCONFIGURATION_PKG' and referenced_type = 'TABLE'
---where referenced_type = 'TYPE'
+where referenced_type = 'TABLE'
 order by rnum;
