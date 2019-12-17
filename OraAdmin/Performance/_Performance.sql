@@ -75,14 +75,15 @@ with
     join gv$active_session_history ash
       on ash.inst_id = s.inst_id and ash.session_id = s.sid and ash.session_serial# = s.serial#
   )
-select * from sess order by username, audsid, sid;
+select * from sess  order by audsid, sid;
 select * from waits order by audsid, wait_seconds desc;
+select * from waits order by audsid;
 select * from longops order by audsid, time_remaining desc, elapsed_seconds desc;
-select * from stats order by audsid;
+--select * from stats order by audsid;
 select * from events order by audsid;
 select * from hist where rnk=1 order by audsid;
 
-select * from table(dbms_xplan.display_cursor(sql_id => '9zujkv53wwx0u', format => 'ALL'));
+select * from table(dbms_xplan.display_cursor(sql_id => '9hr22b850678j', format => 'ALL'));
 
 -- ===========================  SQL execution statistics  ==============================
 -- For each SQL statement currently in SGA:
@@ -125,8 +126,8 @@ select * from table
   dbms_xplan.display_cursor
   (
     sql_id =>
-      '5xs2srrs54duv',
---    cursor_child_no => 0,
+      'gghbyydza9mk9',
+    cursor_child_no => 0,
     format => 'ALL'
   )
 );
