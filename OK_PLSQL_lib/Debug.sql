@@ -26,15 +26,19 @@ from
 order by proc_id desc;
 
 select
-  proc_id, tstamp, log_level, action, to_char(substr(comment_txt,1,255)) result
+  proc_id, tstamp, log_depth, action, to_char(substr(comment_txt,1,255)) result
 --  , comment_txt
 from dbg_log_data
-where proc_id IN (3)
+where proc_id IN (4)
 --and action like 'Adding data to%'
 --and comment_txt not like 'Operation%'
 order by tstamp desc;
 
 select proc_id, action, cnt, seconds 
 from dbg_performance_data 
-where proc_id = 1
+where proc_id = 4
 order by seconds desc;
+
+select
+  proc_id, name, tstamp, t.value.GetTypeName()
+from dbg_supplemental_data t;

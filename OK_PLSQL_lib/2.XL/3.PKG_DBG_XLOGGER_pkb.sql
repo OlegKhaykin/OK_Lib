@@ -4,6 +4,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
  
   History of changes - newest to oldest:
   ------------------------------------------------------------------------------
+  26-Dec-2019, OK: in BEGIN_ACTION, default value of P_LOG_LEVEL is 1 instead of 0;
   11-Dec-2019, OK: added procedure WRITE_SUPPL_DATA;
   24-Nov-2019, OK: P_LOG_LEVEL instead of P_DEBUG;
   29-Oct-2019, OK: TYPE stats_colection - INDEX BY VARCHAR(255);
@@ -139,7 +140,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_dbg_xlogger AS
   (
     p_action      IN VARCHAR2, 
     p_comment     IN CLOB DEFAULT 'Started', 
-    p_log_level   IN PLS_INTEGER DEFAULT 0
+    p_log_level   IN PLS_INTEGER DEFAULT 1
   ) IS
     stk   action_stack_record;
   BEGIN
