@@ -14,10 +14,9 @@ join dba_hist_sqlstat ss on ss.snap_id = s.snap_id and ss.instance_number = s.in
 select --+ parallel(32)
   * 
 from dba_hist_sqltext
-where sql_id = '0wd2dktqjsmhh';
+--where sql_id = '0wd2dktqjsmhh'
 where sql_text like '%SELECT /*+ ordered */%CAREENGINEMEMBERPROCESSSTATUS%'
 ;
-
 
 select * from 
 where  = '1693424455'

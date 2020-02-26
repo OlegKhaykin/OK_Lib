@@ -1,3 +1,5 @@
+ALTER SESSION SET CURRENT_SCHEMA = AHMADMIN;
+
 -- Multi-level research
 with
   ref as
@@ -7,16 +9,17 @@ with
     from dba_constraints          c
     left join dba_constraints     r
       on r.owner = c.r_owner and r.constraint_name = c.r_constraint_name
-    where c.owner = 'ODS' 
+    where c.owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
   )
 select
   lpad(' ', (level-1)*2) ||
   owner||'.'||table_name|| ' -> '||r_owner||'.'||r_table_name reference
 from ref r
 connect by owner = prior r_owner and table_name = prior r_table_name 
-start with owner = 'ODS'
+start with owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
 and table_name IN 
 (
+  
   'PLANSPONSOR','STG_SUPPLIERCONTROL','STG_SUPPLIERCONTROLBPLVXREF','SUPPLIERBATCH',
   'SUPPLIERERRORDETAIL','SUPPLIERERRORSUMMARY','SUPPLIERORGANIZATION','SUPPLIERPRODUCTAUTOCONFIG'
 );

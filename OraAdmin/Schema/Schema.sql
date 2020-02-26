@@ -1,11 +1,11 @@
-alter session set current_schema = ODS;
+alter session set current_schema = ods;
 
 -- Tables and Views:
 select owner, object_name, object_type
 from dba_objects
 where 1=1
 AND owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
-And owner = 'AHMADMIN'
+--And owner = 'AHMADMIN'
 and object_type in ('TABLE', 'VIEW')
 order by owner, object_name;
 
@@ -39,9 +39,9 @@ select
   END data_type,
   CASE nullable WHEN 'N' THEN 'NOT NULL' END nullable
 from dba_tab_columns
-where owner = SYS_CONTEXT('USERENV','CURRENT_SCHEMA')
-and table_name in ('AHMMRNBUSINESSSUPPLIER')
---and column_name = 'PROCESSEDFLAG'
+where owner = 'AHMADMIN'
+--and table_name in ('MASTERSUPPLIER')
+and column_name LIKE '%SEGM%'
 order by owner, table_name, column_id;
 
 -- Partitions:

@@ -1,26 +1,19 @@
-SET VERIFY OFF
-SET HEAD OFF
-
-ACCEPT table PROMPT 'Enter tablename: '
-
-PROMPT This table refers to:
+-- This table references:
 SELECT
  c1.owner||'.'||c1.table_name||'.'||c1.constraint_name || ' -> ' ||
  c2.owner||'.'||c2.table_name||'.'||c2.constraint_name||' ('||c1.delete_rule||')'
-FROM
- dba_constraints c1, dba_constraints c2
-WHERE
- c1.table_name=Upper('&table') AND
- c2.constraint_name = c1.r_constraint_name AND
- c2.owner = c1.r_owner 
+FROM dba_constraints c1
+LEFT JOIN dba_constraints c2
+  ON c2.constraint_name = c1.r_constraint_name
+ AND c2.owner = c1.r_owner 
+WHERE c1.table_name IN ('MASTERSUPPLIER') AND c1.owner = 'AHMADMIN' AND c1.constraint_type = 'R'
 ORDER BY c1.r_owner, c2.table_name;
 
-PROMPT This table is referred by:
+-- This table is referenced by:
 SELECT c1.owner||'.'||c1.table_name||'.'||c1.constraint_name|| ' <- ' || c2.owner||'.'||c2.table_name||'.'||c2.constraint_name||' ('||c2.delete_rule||')'
-FROM
- dba_constraints c1, dba_constraints c2
-WHERE
- c1.table_name=Upper('&table') AND
- c1.constraint_name = c2.r_constraint_name AND
- c1.owner = c2.r_owner
+FROM dba_constraints c1
+JOIN dba_constraints c2
+  ON c2.r_constraint_name = c1.constraint_name
+ AND c2.r_owner = c1.owner
+WHERE c1.table_name='PLANSPONSOR' AND c1.owner = 'ODS'
 ORDER BY c2.owner, c2.table_name, c2.constraint_name;
