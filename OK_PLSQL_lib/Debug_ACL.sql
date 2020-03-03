@@ -5,7 +5,7 @@ BEGIN
     ace => sys.xs$ace_type
     (
       privilege_list => sys.xs$name_List('JDWP') ,
-      principal_name => 'OK',
+      principal_name => 'N384433',
       principal_type => sys.xs_acl.ptype_db
     )
   );
