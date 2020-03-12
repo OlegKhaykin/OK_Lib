@@ -32,3 +32,11 @@ left join all_objects                                             o
 left join gv$sql                                                  sq
   on sq.inst_id = ws.inst_id and sq.sql_id = ws.sql_id
 where hl.lmode not in (0,1);
+
+select s.*, lck.* 
+from dba_objects                        o
+join gv$lock                            lck 
+  on lck.id1 = o.object_id 
+join gv$session                         s
+  on s.inst_id = lck.inst_id and s.sid = lck.sid 
+where o.owner = 'AHMADMIN' and o.object_name = 'TMP_PSA_PROCESS_RESULTS';
