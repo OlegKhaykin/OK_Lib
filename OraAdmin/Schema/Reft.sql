@@ -15,5 +15,5 @@ FROM dba_constraints c1
 JOIN dba_constraints c2
   ON c2.r_constraint_name = c1.constraint_name
  AND c2.r_owner = c1.owner
-WHERE c1.table_name='PLANSPONSOR' AND c1.owner = 'ODS'
+WHERE c1.table_name='SUPPLIER' AND c1.owner = 'AHMADMIN'
 ORDER BY c2.owner, c2.table_name, c2.constraint_name;
