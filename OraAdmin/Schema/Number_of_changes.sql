@@ -52,4 +52,11 @@ from
 where change_factor > 0.5
 order by max_change_factor desc, table_owner, table_name, partition_name nulls last, subpartition_name nulls last;
 
-select count(1) from SUPPLIERPRODUCTRELATION;
+SELECT tm.table_owner, tm.table_name, tm.partition_name, tm.subpartition_name, t.num_rows, t.last_analyzed, tm.timestamp, tm.inserts, tm.updates, tm.deletes
+FROM dba_tab_modifications tm
+JOIN dba_tables t
+  ON t.owner = tm.table_owner
+ AND t.table_name = tm.table_name
+WHERE tm.timestamp > SYSDATE - 2
+AND tm.table_owner <> 'SYS'
+ORDER BY GREATEST(inserts, updates, deletes) DESC;

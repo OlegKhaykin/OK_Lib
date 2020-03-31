@@ -1,39 +1,33 @@
 SELECT output FROM TABLE(DBMS_WORKLOAD_REPOSITORY.AWR_REPORT_HTML(1877720674,  6, 179580, 179783)); 
 
-select
-  distinct
---  s.begin_interval_time,
-  ss.plan_hash_value
-from dba_hist_snapshot s
-join dba_hist_sqlstat ss on ss.snap_id = s.snap_id and ss.instance_number = s.instance_number
-  and ss.sql_id = '0wd2dktqjsmhh'
---where s.begin_interval_time >= timestamp '2019-12-06 00:00:00' and s.end_interval_time < timestamp '2019-12-06 23:59:59'
---order by s.begin_interval_time
-;
-
+-- Search SQL by text:
 select --+ parallel(32)
   * 
 from dba_hist_sqltext
 --where sql_id = '0wd2dktqjsmhh'
-where sql_text like '%SELECT /*+ ordered */%CAREENGINEMEMBERPROCESSSTATUS%'
+where regexp_like(sql_text, '^\s*insert\s+into\s+CAREPROVIDERNAME_ETL', 'i')
 ;
 
-select * from 
-where  = '1693424455'
-
-select * from dba_hist_sql_bind_metadata;
-
-select * from dba_hist_sqlstat
-where sql_id = '6vn5jzmctkbkw'
-order by snap_id desc
-;
+-- Look for the SQL executions:
+SELECT sq.con_dbid, sn.snap_id, sn.begin_interval_time, sn.end_interval_time, s.instance_number, sq.sql_id, u.username, s.executions_total, s.executions_delta 
+FROM dba_hist_sqltext             sq
+JOIN  dba_hist_sqlstat            s
+  ON s.sql_id = sq.sql_id
+ AND s.con_dbid = sq.con_dbid
+JOIN dba_users                    u
+  ON u.user_id = s.parsing_user_id
+JOIN dba_hist_snapshot            sn
+  ON sn.instance_number = s.instance_number
+ AND sn.snap_id = s.snap_id
+--where sq.sql_id = '2u4x0j94cwsas'
+WHERE regexp_like(sql_text, '^\s*insert\s+into\s+CAREPROVIDERNAME_ETL', 'i')
+ORDER BY sn.begin_interval_time DESC;
 
 select * from dba_hist_stat_name
-where stat_name like '%econd%' or stat_name like '%time%'
-;
+
+where stat_name like '%econd%' or stat_name like '%time%';
 
 select * from dba_hist_snapshot where instance_number=3 order by begin_interval_time desc; 
 
 --==============================================
 select * from dba_hist_toplevelcall_name;
-

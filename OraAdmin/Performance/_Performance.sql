@@ -89,17 +89,18 @@ select * from table(dbms_xplan.display_cursor(sql_id => '9hr22b850678j', format 
 -- ===========================  SQL execution statistics  ==============================
 -- For each SQL statement currently in SGA:
 select
-  a.address, c.parent_handle
---  a.*, c.* 
+--  a.address, c.parent_handle
+  a.*, c.* 
 from gv$sqlarea     a
 left join gv$sql_cursor  c
-  on c.parent_handle = a.address --and c.inst_id = a.inst_id
+  on c.parent_handle = a.address and c.inst_id = a.inst_id
 where 1=1
-and a.parsing_schema_name = 'POC'
-and a.module = 'SQL*Plus'
+--and a.parsing_schema_name = 'POC' and a.module = 'SQL*Plus'
 --and a.sql_id = 'bz3wgf0189a4h'
-and a.sql_text like 'create table %'
+and upper(a.sql_text) like '%INSERT%CAREPROVIDERNAME_ETL%'
 ;
+
+select * from gv$session where sql_id = 'frzbwrc0qwj78';
 
 -- For each plan:
 select * from gv$sqlarea_plan_hash;

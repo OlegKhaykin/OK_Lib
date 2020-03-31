@@ -39,9 +39,9 @@ select
   END data_type,
   CASE nullable WHEN 'N' THEN 'NOT NULL' END nullable
 from dba_tab_columns
-where owner = 'AHMADMIN'
+where owner = 'ODS'
 --and table_name in ('MASTERSUPPLIER')
-and column_name LIKE '%SEGM%'
+and column_name LIKE 'CAREPROVIDERID'
 order by owner, table_name, column_id;
 
 -- Partitions:
