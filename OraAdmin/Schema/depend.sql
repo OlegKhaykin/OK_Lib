@@ -2,7 +2,6 @@ SET VERIFY OFF
 
 define obj=CSID.CARPKG_MHSINFO_120;
 
-
 create table N384433.tst_ok_dependencies as
 SELECT * FROM dba_dependencies
 WHERE owner NOT IN ('SYS','SYSTEM');
