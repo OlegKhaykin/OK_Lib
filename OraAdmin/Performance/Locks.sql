@@ -39,4 +39,4 @@ join gv$lock                            lck
   on lck.id1 = o.object_id 
 join gv$session                         s
   on s.inst_id = lck.inst_id and s.sid = lck.sid 
-where o.owner = 'AHMADMIN' and o.object_name = 'TMP_PSA_PROCESS_RESULTS';
+where o.owner = 'AHMADMIN' and o.object_name = 'TMP_STG_SUPP_CSA_PROD';
