@@ -10,8 +10,7 @@ begin
       (
         'DBG_PROCESS_LOGS', 'DBG_LOG_DATA', 'DBG_PERFORMANCE_DATA', 'DBG_SUPPLEMENTAL_DATA'
       )
-      OR
-      object_type = 'SEQUENCE' and object_name = 'SEQ_DBG_XLOGGER'
+      OR object_type = 'SEQUENCE' and object_name = 'SEQ_DBG_XLOGGER'
     )
   )
   loop
@@ -20,7 +19,7 @@ begin
   end loop;
 end;
 /
- 
+
 CREATE SEQUENCE seq_dbg_xlogger INCREMENT BY 1 NOCACHE;
  
 CREATE TABLE dbg_process_logs
@@ -31,7 +30,7 @@ CREATE TABLE dbg_process_logs
   start_time  TIMESTAMP(6) DEFAULT SYSTIMESTAMP NOT NULL,
   end_time    TIMESTAMP(6),
   result      VARCHAR2(2048),
-  CONSTRAINT pk_dbg_process_logs PRIMARY KEY(proc_id)
+  CONSTRAINT pk_dbg_process_logs PRIMARY KEY(proc_id) USING INDEX LOCAL
 )
 PARTITION BY RANGE (proc_id) INTERVAL (1000)
 (
@@ -47,6 +46,7 @@ CREATE TABLE dbg_log_data
   proc_id                    NUMBER(30) NOT NULL,
   tstamp                     TIMESTAMP(6) NOT NULL,
   log_depth                  NUMBER(2) NOT NULL,
+  pls_unit                   VARCHAR2(128) NOT NULL,
   action                     VARCHAR2(255) NOT NULL,
   comment_txt                CLOB,
   CONSTRAINT fk_logdata_proc FOREIGN KEY (proc_id) REFERENCES dbg_process_logs(proc_id) ON DELETE CASCADE
@@ -56,7 +56,7 @@ PARTITION BY RANGE(proc_id) INTERVAL(1000)
   PARTITION p1 VALUES LESS THAN (1000)
 );
  
-CREATE INDEX fki_dbg_log_data_procid ON dbg_log_data(proc_id) LOCAL;
+CREATE INDEX fki_dbg_logdata_proc ON dbg_log_data(proc_id) LOCAL;
  
 GRANT SELECT ON dbg_log_data TO PUBLIC;
  
@@ -66,7 +66,7 @@ CREATE TABLE dbg_performance_data
   action                     VARCHAR2(255),
   cnt                        NUMBER(10),
   seconds                    NUMBER,
-  CONSTRAINT pk_perfdata PRIMARY KEY(proc_id, action), 
+  CONSTRAINT pk_perfdata PRIMARY KEY(proc_id, action) USING INDEX LOCAL, 
   CONSTRAINT fk_perfdata_proc FOREIGN KEY (proc_id) REFERENCES dbg_process_logs ON DELETE CASCADE
 )
 PARTITION BY RANGE(proc_id) INTERVAL(1000)
@@ -91,6 +91,6 @@ PARTITION BY RANGE (proc_id) INTERVAL (1000)
   PARTITION p1 VALUES LESS THAN (1000)
 );
 
-CREATE INDEX idx_dbg_suppldat_fk_proc ON dbg_supplemental_data(proc_id);
+CREATE INDEX fki_dbg_suppldat_proc ON dbg_supplemental_data(proc_id) LOCAL;
 
 GRANT SELECT ON dbg_supplemental_data TO PUBLIC;
