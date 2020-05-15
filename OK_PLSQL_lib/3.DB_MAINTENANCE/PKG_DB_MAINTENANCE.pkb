@@ -1,76 +1,4 @@
-CREATE OR REPLACE PACKAGE pkg_db_maintenance AUTHID CURRENT_USER AS
-  TYPE rec_partition_info IS RECORD
-  (
-    table_owner         VARCHAR2(30),
-    table_name          VARCHAR2(128),
-    tablespace_name     VARCHAR2(30),
-    partition_name      VARCHAR2(128),
-    partition_position  NUMBER(6),
-    high_value          VARCHAR2(255),
-    compress_for        VARCHAR2(30),
-    num_blocks          NUMBER(10),
-    num_rows            INTEGER,
-    last_analyzed       DATE
-  );
- 
-  TYPE tab_partition_info IS TABLE OF rec_partition_info;
- 
-  TYPE rec_subpartition_info IS RECORD
-  (
-    table_owner           VARCHAR2(30),
-    table_name            VARCHAR2(128),
-    tablespace_name       VARCHAR2(30),
-    partition_name        VARCHAR2(128),
-    subpartition_name     VARCHAR2(128),
-    subpartition_position NUMBER(6),
-    high_value            VARCHAR2(255),
-    compress_for          VARCHAR2(30),
-    num_blocks            NUMBER(10),
-    num_rows              INTEGER,
-    last_analyzed         DATE
-  );
- 
-  TYPE tab_subpartition_info IS TABLE OF rec_subpartition_info;
-
-  TYPE rec_column_definition IS RECORD
-  (
-    column_name VARCHAR2(128),
-    data_type   VARCHAR2(30),
-    nullable    CHAR(1) 
-  );
-  
-  TYPE tab_column_definitions IS TABLE OF rec_column_definition;
-  
-  FUNCTION get_column_definitions(p_column_definitions IN VARCHAR2) RETURN tab_column_definitions PIPELINED;
-  
-  FUNCTION get_partition_info
-  (
-    i_table_owner         IN VARCHAR2,
-    i_table_name          IN VARCHAR2,
-    i_partition_name      IN VARCHAR2 DEFAULT NULL,
-    i_partition_position  IN NUMBER DEFAULT NULL
-  ) RETURN tab_partition_info PIPELINED;
-  
-  FUNCTION get_subpartition_info
-  (
-    i_table_owner         IN VARCHAR2,
-    i_table_name          IN VARCHAR2,
-    i_partition_name      IN VARCHAR2 DEFAULT NULL
-  ) RETURN tab_subpartition_info PIPELINED;
-  
-  PROCEDURE add_columns
-  (
-    p_column_definitions IN VARCHAR2,
-    p_table_list         IN VARCHAR2
-  );
-END;
-/
-
-CREATE OR REPLACE SYNONYM adm FOR pkg_db_maintenance;
-GRANT EXECUTE ON adm TO PUBLIC;
-
-
-CREATE OR REPLACE PACKAGE BODY pkg_db_maintenance AS
+CREATE OR REPLACE PACKAGE BODY etladmin.pkg_db_maintenance AS
   PROCEDURE exec_sql(p_sql IN VARCHAR2, p_force IN BOOLEAN DEFAULT FALSE) IS
   BEGIN
     IF LENGTH(p_sql) > 255 THEN
@@ -92,10 +20,18 @@ CREATE OR REPLACE PACKAGE BODY pkg_db_maintenance AS
   
   FUNCTION get_column_definitions(p_column_definitions IN VARCHAR2) RETURN tab_column_definitions PIPELINED IS
     
-    FUNCTION get_col_dfn(p_col_dfn IN VARCHAR2) RETURN obj_column_definition IS
-      ret   obj_column_definition;
+    FUNCTION get_col_dfn(p_col_dfn IN VARCHAR2) RETURN rec_column_definition IS
+      ret   rec_column_definition;
+      n     PLS_INTEGER;
+      m     PLS_INTEGER;
     BEGIN
-      EXECUTE IMMEDIATE 'BEGIN :ret := obj_column_definition('''||REPLACE(p_col_dfn, ':', ''',''')||'''); end;' USING OUT ret;
+      m := INSTR(p_col_dfn, ':', 1, 1);
+      n := INSTR(p_col_dfn, ':', 1, 2);
+      
+      ret.column_name := SUBSTR(p_col_dfn, 1, m-1);
+      ret.data_type := SUBSTR(p_col_dfn, m+1, n-m-1);
+      ret.nullable := SUBSTR(p_col_dfn, n+1);
+      
       RETURN ret;
     END;
   BEGIN
@@ -199,7 +135,7 @@ CREATE OR REPLACE PACKAGE BODY pkg_db_maintenance AS
       tcd.column_name||' '||tcd.data_type||
       CASE WHEN tcd.nullable <> NVL(utc.nullable, 'NULL') THEN CASE tcd.nullable WHEN 'N' THEN ' NOT NULL' ELSE ' NULL' END END cmd
     BULK COLLECT INTO cmd_list 
-    FROM TABLE(pkg_db_maintenance.get_column_definitions(p_column_definitions)) tcd
+    FROM TABLE(etladmin.pkg_db_maintenance.get_column_definitions(p_column_definitions)) tcd
     CROSS JOIN TABLE(split_string(p_table_list)) tl
     LEFT JOIN v_all_columns utc
       ON utc.owner = SYS_CONTEXT('USERENV','CURRENT_USER')
