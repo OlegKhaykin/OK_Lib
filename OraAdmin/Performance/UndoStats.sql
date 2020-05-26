@@ -1,3 +1,10 @@
+select s.sid, t.name, s.value
+from gv$sesstat s
+join v$statname t
+  on s.statistic# = t.statistic#
+where t.name='undo change vector size'
+order by s.value desc;
+
 /*
 select 
   rs.segment_name,
