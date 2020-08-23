@@ -1,0 +1,1 @@
+CREATE OR REPLACE CONTEXT ctx_global_debug USING debuger.pkg_dbg_xlogger ACCESSED GLOBALLY;  
