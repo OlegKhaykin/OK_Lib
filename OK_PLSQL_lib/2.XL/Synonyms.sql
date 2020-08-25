@@ -19,7 +19,7 @@ BEGIN
     WHERE s.owner IS NULL
   )
   LOOP
-    EXECUTE IMMEDIATE 'CREATE OR REPLACE SYNONYM '||r.username||'.'||r.synonym_name||' FOR '||r.owner||'.'||r.object_name;
+    EXECUTE IMMEDIATE 'CREATE OR REPLACE PUBLIC SYNONYM '||r.username||'.'||r.synonym_name||' FOR '||r.owner||'.'||r.object_name;
   END LOOP;
 END;
 /
