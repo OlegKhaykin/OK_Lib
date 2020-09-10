@@ -17,7 +17,8 @@ select
 from
 (
   select
-    inst_id, sid, serial#, username, program, machine, status, last_call_et, 
+    inst_id, sid, serial#, pid, spid, 
+    username, program, machine, status, last_call_et, 
     sql_address, sql_hash_value,
     trunc(duration) days,
     trunc(duration*24) hours,
@@ -26,11 +27,13 @@ from
   from
   (
     select
-      inst_id, sid, serial#, username, program, machine, status, last_call_et, 
-      sql_address, sql_hash_value,
+      s.inst_id, s.sid, s.serial#, s.username, s.program, s.machine, s.status, s.last_call_et,
+      p.pid, p.spid,
+      s.sql_address, s.sql_hash_value,
       (sysdate-logon_time) duration
-    from gv$session
-    where sid = 952
+    from gv$session s
+    join gv$process p on p.inst_id = s.inst_id and p.addr = s.paddr
+    where sid = 3670
   )
 ) s;
 
