@@ -17,7 +17,7 @@ with
     and s.status = 'ACTIVE'
     and s.audsid <> sys_context('userenv','sessionid')
     and s.osuser <> 'oracle'
-    and upper(sql_text) like '%MEMBERPDCSCOREHIST%'
+    --and upper(sql_text) like '%MEMBERPDCSCOREHIST%'
 --    and s.username = 'CEAPP'
 --    and s.module = 'SQL*Plus'
 --    and s.sid = 339
