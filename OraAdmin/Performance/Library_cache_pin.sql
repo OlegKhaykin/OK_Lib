@@ -62,5 +62,4 @@ WHERE pn.KGLPNUSE = ses.saddr
 and pn.KGLPNHDL = lob.KGLHDADR
 and lob.kglhdadr = vsw.p1raw
 and vsw.event = 'library cache pin'
-order by lock_mode_held desc
-/
+order by lock_mode_held desc;
