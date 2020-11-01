@@ -8,7 +8,9 @@ FROM gv$locked_object             lo
 JOIN dba_objects                  o
   ON lo.object_id = o.object_id
 JOIN gv$session                   s
-  ON s.sid = lo.session_id AND s.inst_id = lo.inst_id;
+  ON s.sid = lo.session_id AND s.inst_id = lo.inst_id
+and o.owner = 'AHMADMIN'
+;
 
 -- Blocking locks:
 SELECT
