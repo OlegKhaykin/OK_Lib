@@ -14,16 +14,16 @@ with
     join gv$process p on p.inst_id = s.inst_id and p.addr = s.paddr
     left join gv$sqltext sqlt on sqlt.inst_id = s.inst_id and sqlt.sql_id = s.sql_id and sqlt.piece = 0
     where 1=1
-    and s.status = 'ACTIVE'
-    and s.audsid <> sys_context('userenv','sessionid')
+    --and s.status = 'ACTIVE'
+    --and s.audsid <> sys_context('userenv','sessionid')
     and s.osuser <> 'oracle'
     --and upper(sql_text) like '%MEMBERPDCSCOREHIST%'
---    and s.username = 'CEAPP'
+    and s.username = 'N438780'
 --    and s.module = 'SQL*Plus'
---    and s.sid = 339
+    --and s.sid = 2860
 --    and s.audsid = 618435790
 --    and upper(s.program) ='SQLPLUS.EXE'
-    and s.sql_id is not null
+    --and s.sql_id is not null
   ),
   longops as
   (
