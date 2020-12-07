@@ -15,7 +15,7 @@ and o.owner = 'AHMADMIN'
 -- Blocking locks:
 SELECT
   o.owner||'.'||o.object_name||' ('||o.object_type|| ')' object,
-  hs.username blocker, hs.sid blocking_sess, hs.program blocking_program, hs.machine blocking_machine, 
+  hs.username blocker, hs.sid blocking_sess, hs.serial# blocking_serial#, hs.program blocking_program, hs.machine blocking_machine, 
   hl.type lock_type, 
   decode(hl.lmode,0,'None',1,'Null',2,'R-SS',3,'R-SX',4,'Shar',5,'SRX',6,'Ex', to_char(hl.lmode)) mode_held,
   ws.username waiter, ws.sid waiting_sess, ws.program waiting_program, ws.machine waiting_machine ,
