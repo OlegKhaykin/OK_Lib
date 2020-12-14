@@ -18,11 +18,11 @@ with
     --and s.audsid <> sys_context('userenv','sessionid')
     and s.osuser <> 'oracle'
     --and upper(sql_text) like '%MEMBERPDCSCOREHIST%'
-    and s.username = 'N384433'
---    and s.module = 'SQL*Plus'
-    --and s.sid = 2860
---    and s.audsid = 618435790
---    and upper(s.program) ='SQLPLUS.EXE'
+    --and s.username = 'N384433'
+    --and s.module = 'SQL*Plus'
+    and s.sid = 499
+    --and s.audsid = 618435790
+    --and upper(s.program) ='SQLPLUS.EXE'
     --and s.sql_id is not null
   ),
   longops as
