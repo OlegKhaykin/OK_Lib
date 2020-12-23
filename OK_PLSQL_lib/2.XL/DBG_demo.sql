@@ -49,7 +49,7 @@ exception
     p_dump => TRUE
   );
   
-  raise; -- Never "swallow" exception, let them rise!
+  raise; -- Never "swallow" exceptions, let them rise!
 end;
 /
 
