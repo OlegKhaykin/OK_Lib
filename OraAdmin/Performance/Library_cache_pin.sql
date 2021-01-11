@@ -1,8 +1,9 @@
--- Gotta be SYS:
+--==============================================================================
+-- !!! Gotta be SYS !!!
 select 
   decode
   (
-    lob.kglobtyp, 
+    kglob.kglobtyp, 
     0, 'NEXT OBJECT', 
     1, 'INDEX', 
     2, 'TABLE', 
@@ -47,7 +48,7 @@ select
     62, 'EVALUATION CONTEXT',
     'UNDEFINED'
   ) object_type,
-  lob.kglnaobj object_name,
+  kglob.kglnaobj object_name,
   pn.kglpnmod lock_mode_held,
   pn.kglpnreq lock_mode_requested,
   ses.sid,
@@ -56,10 +57,10 @@ select
 FROM
   x$kglpn pn,
   v$session ses,
-  x$kglob lob,
+  x$kglob kglob,
   v$session_wait vsw
 WHERE pn.KGLPNUSE = ses.saddr 
 and pn.KGLPNHDL = lob.KGLHDADR
-and lob.kglhdadr = vsw.p1raw
+and kglob.kglhdadr = vsw.p1raw
 and vsw.event = 'library cache pin'
 order by lock_mode_held desc;
