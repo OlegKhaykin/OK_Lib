@@ -1,5 +1,0 @@
-Result,Percent
-not good,0
-perfect,200 
-well,100 
-good,150

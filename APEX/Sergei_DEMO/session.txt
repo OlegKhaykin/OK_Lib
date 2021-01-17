@@ -1,9 +1,0 @@
-Number, Score1, Score2, Score3, Score4, Result
-16493,5,3,4,3, not good
-16593,4,4,5,5, well
-16693,5,5,5,5, perfect
-16793,5,5,4,5, well
-16893,4,4,4,4, good
-16993,4,5,5,5, well
-17093,5,5,5,5, perfect
-

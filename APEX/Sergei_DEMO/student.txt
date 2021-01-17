@@ -1,8 +1,0 @@
-Number, Surname, First Name, Gender, Group
-16493, Sergeev, Peter, m, 1MI
-16593, Petrova, Anna, f, 1FI
-16693, Anokhin, Andrey, m, 1FI
-16793, Borisova, Maria, f, 1MI
-16893, Zaitsev, Sergei, m, 1MI
-16993, Krevtsov, Alexey, m, 1FI
-17093, Volkova, Elena, f, 1MI
