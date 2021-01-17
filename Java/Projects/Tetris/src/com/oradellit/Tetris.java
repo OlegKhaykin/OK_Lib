@@ -115,15 +115,6 @@ public class Tetris
     paintRow(i);
   }
 
-  private void init()
-  {
-    for (int i=0; i<HEIGHT; i++) newRow(i);
-    filled_rows = 0;
-    getNewShape();
-    setTimer(INITIAL_RATE);
-    show_status();
-  }
-
   private void getNewShape()
   {
     shape_num = random.nextInt(7);
@@ -201,6 +192,15 @@ public class Tetris
       }
       else p++; // go to the next row
     }
+  }
+
+  private void init()
+  {
+    for (int i=0; i<HEIGHT; i++) newRow(i);
+    filled_rows = 0;
+    getNewShape();
+    setTimer(INITIAL_RATE);
+    show_status();
   }
 
   private void run()

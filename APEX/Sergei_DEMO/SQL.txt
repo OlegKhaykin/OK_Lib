@@ -1,0 +1,13 @@
+SELECT lab1$STUDENT.Student_id, lab1$STUDENT.Surname, lab1$STUDENT.Name, lab1$STUDENT.Grup, lab1$STIPEN.prcnt
+FROM lab1$EXAM, lab1$STUDENT, lab1$STIPEN 
+WHERE lab1$EXAM.Student_id = lab1$STUDENT.Student_id 
+AND lab1$EXAM.Result = lab1$STIPEN.Result 
+AND lab1$STIPEN.Prcnt > 0 
+ORDER BY lab1$STUDENT.Surname asc
+
+SELECT lab1$STUDENT.Student_id, lab1$STUDENT.Surname, lab1$STUDENT.Name, lab1$STUDENT.Grup, lab1$STIPEN.prcnt/100*:Base as "Руб"
+FROM lab1$EXAM, lab1$STUDENT, lab1$STIPEN 
+WHERE lab1$EXAM.Student_id = lab1$STUDENT.Student_id 
+AND lab1$EXAM.Result = lab1$STIPEN.Result 
+AND lab1$STIPEN.Prcnt > 0 
+ORDER BY lab1$STUDENT.Surname asc
